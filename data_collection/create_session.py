@@ -1,36 +1,37 @@
-from atproto_client import Client
+from atproto import Client
 import getpass
 import os
 
 def main():
+    print("Starting session creation...")
     client = Client()
-    username = input("USERNAME: ")
+    
+    # Prompt for credentials
+    username = input("USERNAME (e.g. name.bsky.social): ")
     password = getpass.getpass("PASSWORD: ")
 
-    # effettua il login
-    client.login(username, password)
-
-    # ottieni la stringa di sessione serializzata (come usato negli script)
+    print("Attempting to log in...")
+    
     try:
-        session_string = client.session.export()
-    except Exception:
-        # fallback: alcuni SDK potrebbero esporre la sessione in modo diverso
-        session_string = getattr(client, "session", None)
-        if session_string is None:
-            raise RuntimeError("Impossibile ottenere la sessione dal client.")
-        session_string = session_string.export()
+        # Perform login
+        client.login(username, password)
+        print("Login successful!")
 
-    # scrivi session.txt
-    with open("session.txt", "w") as f:
-        f.write(session_string)
+        # NEW METHOD: export the session string correctly
+        session_string = client.export_session_string()
 
-    # restringi permessi file (Unix)
-    try:
-        os.chmod("session.txt", 0o600)
-    except Exception:
-        pass
+        # Write to session.txt
+        with open("session.txt", "w") as f:
+            f.write(session_string)
 
-    print("session.txt creato nella cartella corrente. NON committare questo file su Git.")
+        print("SUCCESS! 'session.txt' has been created in the current folder.")
+        print("You can now run the other scripts.")
+        print("DO NOT commit 'session.txt' to Git/GitHub as it contains your credentials.")
+
+    except Exception as e:
+        print("\nERROR DURING LOGIN:")
+        print(e)
+        print("Please check that your username and password are correct.")
 
 if __name__ == "__main__":
     main()
