@@ -1,5 +1,10 @@
+#Questo file è stato modificato per prendere le attività solamente degli ultimi 30 giorni. 
+#Per il codice originale andare sul sito e riscaricare lo script
+ 
 from atproto_client import Client, SessionEvent
 from atproto.exceptions import RequestException, BadRequestError
+from dateutil import parser
+from datetime import datetime, timezone, timedelta
 
 import datetime, time
 import gzip
@@ -87,7 +92,7 @@ def _save(posts, processed_users, i, file_id):
 
     with gzip.open(f'data/chunk_{CHUNK}/timelines-{file_id}.jsonl.gz', 'a') as f:
         for post in posts:
-            row = f"{post.json()}\n"
+            row = f"{post.model_dump_json()}\n"
             f.write(row.encode('utf8'))
 
     with open(f'processed_{CHUNK}.txt', 'a') as f:
@@ -108,20 +113,44 @@ def _read_list(path):
 
 
 def collect_timeline(client, handle, cursor=None, posts=None):
-    count_user_errors = 0 # init
+    count_user_errors = 0 
     cursor = None
     old_cursor = None
+    
+    # --- CONFIGURAZIONE TEMPO ---
+    # Scarica solo post degli ultimi 30 giorni
+    TIME_LIMIT = datetime.now(timezone.utc) - timedelta(days=30)
+    stop_download = False
+    # ----------------------------
 
     if posts is None:
         posts = []
     
-    
     while True:
         if count_user_errors > MAX_USER_ERRORS:
             return posts
+        
+        # Se abbiamo superato la data limite, fermiamoci
+        if stop_download:
+            break
+
         try:
             fetched = client.get_author_feed(handle, limit=100, cursor=cursor)
-            posts = posts + fetched.feed
+            
+            # Controllo date nel blocco appena scaricato
+            for post_view in fetched.feed:
+                # Estraggo la data del post
+                post_date_str = post_view.post.record.created_at
+                post_date = parser.parse(post_date_str)
+                
+                # Se il post è troppo vecchio...
+                if post_date < TIME_LIMIT:
+                    stop_download = True # ...attiva il freno per il prossimo giro
+                    # Non aggiungiamo questo post e usciamo dal for
+                    continue 
+                
+                # Altrimenti aggiungi il post alla lista
+                posts.append(post_view)
 
         except RequestException as e:
             count_user_errors +=1
@@ -136,15 +165,13 @@ def collect_timeline(client, handle, cursor=None, posts=None):
             cursor = old_cursor
             continue
         
-        if not fetched.cursor:
+        if not fetched.cursor or stop_download:
             break
         
         old_cursor = cursor
         cursor = fetched.cursor
     
     return posts
-
-
 
 
 if __name__ == '__main__':
