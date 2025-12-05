@@ -1,6 +1,9 @@
 #Questo file è stato modificato per prendere le attività solamente degli ultimi 30 giorni. 
 #Per il codice originale andare sul sito e riscaricare lo script
  
+# This file has been modified to capture activity only from the last 30 days.
+# It also includes a final timer to estimate performance.
+
 from atproto_client import Client, SessionEvent
 from atproto.exceptions import RequestException, BadRequestError
 from dateutil import parser
@@ -95,7 +98,7 @@ def _save(posts, processed_users, i, file_id):
             row = f"{post.model_dump_json()}\n"
             f.write(row.encode('utf8'))
 
-    with open(f'processed_{CHUNK}.txt', 'a') as f:
+    with open(f'processedT_{CHUNK}.txt', 'a') as f:
         for u in processed_users:
             f.write(f'{u}\t{i}\n')
     print(f'{datetime.datetime.now()} SAVED {i+1}')
@@ -117,9 +120,10 @@ def collect_timeline(client, handle, cursor=None, posts=None):
     cursor = None
     old_cursor = None
     
-    # --- CONFIGURAZIONE TEMPO ---
-    # Scarica solo post degli ultimi 30 giorni
-    TIME_LIMIT = datetime.now(timezone.utc) - timedelta(days=30)
+    # --- TIME CONFIGURATION ---
+    # Using datetime.datetime and datetime.timedelta to avoid import errors
+    # Download only posts from the last 30 days
+    TIME_LIMIT = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
     stop_download = False
     # ----------------------------
 
@@ -130,27 +134,35 @@ def collect_timeline(client, handle, cursor=None, posts=None):
         if count_user_errors > MAX_USER_ERRORS:
             return posts
         
-        # Se abbiamo superato la data limite, fermiamoci
+        # If we passed the date limit, break the main loop
         if stop_download:
             break
 
         try:
             fetched = client.get_author_feed(handle, limit=100, cursor=cursor)
             
-            # Controllo date nel blocco appena scaricato
+            # Check dates in the fetched block
             for post_view in fetched.feed:
-                # Estraggo la data del post
+                # Extract post date
                 post_date_str = post_view.post.record.created_at
-                post_date = parser.parse(post_date_str)
                 
-                # Se il post è troppo vecchio...
+                # Safe date parsing
+                try:
+                    post_date = parser.parse(post_date_str)
+                except:
+                    continue # Skip post if date is unreadable
+
+                # Normalize timezone to UTC to avoid comparison errors
+                if post_date.tzinfo is None:
+                     post_date = post_date.replace(tzinfo=datetime.timezone.utc)
+
+                # If post is older than the limit...
                 if post_date < TIME_LIMIT:
-                    stop_download = True # ...attiva il freno per il prossimo giro
-                    # Non aggiungiamo questo post e usciamo dal for
-                    continue 
+                    stop_download = True 
+                    continue # Skip to next (which will trigger the break)
                 
-                # Altrimenti aggiungi il post alla lista
-                posts.append(post_view)
+                # Otherwise add post to list
+                posts.append(post_view.post) # Note: we save .post, not the whole view
 
         except RequestException as e:
             count_user_errors +=1
@@ -175,6 +187,13 @@ def collect_timeline(client, handle, cursor=None, posts=None):
 
 
 if __name__ == '__main__':
+    # START TIMER
+    start_run_time = time.time()
+    
+    if len(sys.argv) < 2:
+        print("Error: please specify the chunk number (e.g., python crawl_timelines.py 1)")
+        sys.exit(1)
+
     CHUNK = int(sys.argv[1])
 
     if not os.path.exists(f'data/chunk_{CHUNK}'):
@@ -184,35 +203,73 @@ if __name__ == '__main__':
     user_list = _read_list(f'{CHUNK}.txt')
     all_posts = []
     processed = _read_list(f'processedT_{CHUNK}.txt')
-    processed = set(processed)
-    n_processed = len(processed)
+    processed_set_loaded = set()
+    
+    # Load processed users into a set for faster lookup
+    for p in processed:
+        parts = p.split('\t')
+        if parts:
+            processed_set_loaded.add(parts[0])
+
+    n_processed = len(processed_set_loaded)
+    
     if n_processed > 0:
-        user_list = list(set(user_list) - processed)
-        print(f'remaining:', len(user_list))
-    processed = []
+        # Filter the list removing already processed users
+        original_count = len(user_list)
+        user_list = [u for u in user_list if u not in processed_set_loaded]
+        print(f'Resuming: {original_count} total users found, {len(user_list)} remaining to process.')
+    
+    processed = [] # Reset for current batch
+    
+    # Total number of users to process in this run
+    users_to_process_count = len(user_list)
     
     # cfid is USERS_PER_FILE if first file, else k*USERS_PER_FILE
     current_file_id = USERS_PER_FILE + int(n_processed/USERS_PER_FILE) * USERS_PER_FILE
-    for i, user in enumerate(user_list):
-        i += n_processed # resume idx
-        posts = collect_timeline(client, user)
-        for post in posts:
-            post.user = user
-        all_posts.extend(posts)
-        processed.append(user)
-
-        if (i+1) % (USERS_PER_FILE+SAVE_EVERY_N_USERS) == 0:
-            current_file_id += USERS_PER_FILE
-            _save(all_posts, processed, i,  current_file_id)
-            all_posts = []
-            processed = []
-        elif (i+1) % SAVE_EVERY_N_USERS == 0: 
-            _save(all_posts, processed, i,  current_file_id)
-            all_posts = []
-            processed = []
-        
-    if len(all_posts) > 0:
-       _save(all_posts, processed, i,  current_file_id)
-        
-
     
+    last_idx = 0 
+
+    try:
+        for i, user in enumerate(user_list):
+            last_idx = i
+            
+            posts = collect_timeline(client, user)
+            for post in posts:
+                post.user = user
+            all_posts.extend(posts)
+            processed.append(user)
+
+            # Use total count (previously processed + current) for saving checkpoints
+            total_count = n_processed + i + 1
+
+            if total_count % (USERS_PER_FILE+SAVE_EVERY_N_USERS) == 0:
+                current_file_id += USERS_PER_FILE
+                _save(all_posts, processed, total_count,  current_file_id)
+                all_posts = []
+                processed = []
+            elif total_count % SAVE_EVERY_N_USERS == 0: 
+                _save(all_posts, processed, total_count,  current_file_id)
+                all_posts = []
+                processed = []
+            
+        if len(all_posts) > 0:
+            total_count = n_processed + last_idx + 1
+            _save(all_posts, processed, total_count,  current_file_id)
+
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.")
+    
+    # END TIMER & SUMMARY
+    end_run_time = time.time()
+    total_duration = end_run_time - start_run_time
+    minutes = total_duration / 60
+
+    print("\n" + "="*50)
+    print("                 FINAL REPORT")
+    print("="*50)
+    print(f"USERS PROCESSED IN THIS RUN:   {users_to_process_count}")
+    print(f"TOTAL TIME ELAPSED:            {total_duration:.2f} seconds ({minutes:.2f} minutes)")
+    if users_to_process_count > 0:
+        avg_time = total_duration / users_to_process_count
+        print(f"AVERAGE TIME PER USER:         {avg_time:.2f} seconds")
+    print("="*50 + "\n")

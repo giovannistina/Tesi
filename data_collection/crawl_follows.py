@@ -1,171 +1,146 @@
-from atproto_client import Client, SessionEvent
+import sys
+import os
+import time
+import datetime
+from atproto import Client
 from atproto.exceptions import RequestException, BadRequestError
 
-import datetime, time
-import sys
-
-import os
-
-import logging.handlers
-
-log = logging.getLogger("bot")
-log.setLevel(logging.DEBUG)
-log.addHandler(logging.StreamHandler())
-
-USERNAME = os.environ.get('USERNAME')
-PASSWORD = os.environ.get('PASSWORD')
-SAVE_EVERY_N_USERS = 1000
-
-count_user_errors = 0
-MAX_USER_ERRORS = 10
-
-
-#### SESSION
+# --- CONFIGURATION ---
+SAVE_EVERY_N_USERS = 100
+# ----------------------
 
 def get_session():
+    """Reads the session string from the local file."""
     try:
-        with open('session.txt') as f:
-            return f.read()
+        with open('session.txt', 'r') as f:
+            return f.read().strip()
     except FileNotFoundError:
         return None
 
-
-def save_session(session_string):
-    with open('session.txt', 'w') as f:
-        f.write(session_string)
-
-
-def on_session_change(event, session):
-    print('Session changed:', event, repr(session))
-    if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
-        print('Saving changed session')
-        save_session(session.export())
-
-
-def init_client(USERNAME, PASSWORD):
+def init_client():
+    """Initializes the Bluesky client using the saved session."""
     client = Client()
-    client.on_session_change(on_session_change)
-
     session_string = get_session()
     if session_string:
-        print('Reusing session')
+        print('Reusing session from session.txt')
         client.login(session_string=session_string)
     else:
-        print('Creating new session')
-        client.login(USERNAME, PASSWORD)
-
+        raise Exception("Session file not found. Run create_session.py first.")
     return client
 
-
-#### EXCP HANDLING
-
-def sleep_until(when):
-    now = datetime.datetime.now()
-    when = datetime.datetime.fromtimestamp(when, datetime.UTC)
-    if now.timestamp() > when.timestamp():
-        pass
-    else:
-        print(f"waiting until {when}")
-        time.sleep((when - now).total_seconds())
-
-
-def _handle_requests_exceptions(e):
-    status = e.response.status_code
-    print(f"{datetime.datetime.now()}. error {status} {e.response.content.message}")
-    if status == 429:  # too many
-        when = int(e.response.headers['RateLimit-Reset'])
-        sleep_until(when)
-
-    elif status in {409, 413, 502}:  # net error
-        time.sleep(50)
-    else:
-        pass
-
-
-#### IO
-
-def _save(follows, processed_users):
-    with open(f'data/follows_{CHUNK}.txt', 'a') as f:
-        for user, flws in follows.items():
+def _save(follows_data, processed_users, chunk_id):
+    """Saves the downloaded data to text files."""
+    
+    # Save relations: USER -> FOLLOWS_1 FOLLOWS_2 ...
+    with open(f'follows_{chunk_id}.txt', 'a', encoding='utf-8') as f:
+        for user, flws in follows_data.items():
+            # Format: USER_DID [TAB] FOLLOWED_DID_1 FOLLOWED_DID_2 ...
             f.write(f"{user}\t{' '.join(flws)}\n")
 
-    with open(f'processedf_{CHUNK}.txt', 'a') as f:
+    # Save processed users checkpoint
+    with open(f'processedfollows_{chunk_id}.txt', 'a', encoding='utf-8') as f:
         for user in processed_users:
             f.write(f"{user}\n")
-    print(f'{datetime.datetime.now()} SAVED {i + 1}')
+            
+    # Discreet checkpoint message
+    print(f'   [SAVED checkpoint at {datetime.datetime.now().strftime("%H:%M:%S")}]')
 
-
-def _read_list(path):
-    if not os.path.exists(path):
-        return []
-    res = []
-    with open(path) as f:
-        for l in f.readlines():
-            res.append(l.rstrip())
-    return res
-
-
-def collect_follows(client, handle, follows=None):
-    count_user_errors = 0  # init
+def collect_follows(client, handle):
+    """Downloads the list of users that 'handle' follows (Outbound edges)."""
+    follows = []
     cursor = None
-    old_cursor = None
-
-    if follows is None:
-        follows = []
-
+    
     while True:
-        if count_user_errors > MAX_USER_ERRORS:
-            return follows
         try:
-            fetched = client.get_follows(handle, limit=100, cursor=cursor)
+            # Download 100 follows at a time
+            fetched = client.get_follows(actor=handle, limit=100, cursor=cursor)
+            
             for user in fetched.follows:
-                follows.append(user.handle)
+                follows.append(user.did) # Always use DID for scientific consistency
 
-        except RequestException as e:
-            count_user_errors += 1
-            _handle_requests_exceptions(e)
-            cursor = old_cursor
-            continue
-        except BadRequestError:
-            return []
+            if not fetched.cursor:
+                break
+            cursor = fetched.cursor
+
         except Exception as e:
-            count_user_errors += 1
-            print(f"{datetime.datetime.now()} {e}")
-            cursor = old_cursor
-            continue
-
-        if not fetched.cursor:
+            # We catch errors to prevent the script from crashing on a single bad user
+            # print(f"Error fetching follows for {handle}: {e}")
             break
-
-        old_cursor = cursor
-        cursor = fetched.cursor
-
+            
     return follows
 
+def main():
+    # START TIMER
+    start_run_time = time.time()
 
+    if len(sys.argv) < 2:
+        print("Usage: python crawl_follows.py <CHUNK_NUMBER>")
+        return
 
+    CHUNK = sys.argv[1]
+    
+    # Input file is expected to be batch_X.txt
+    input_file = f'batch_{CHUNK}.txt'
+
+    if not os.path.exists(input_file):
+        print(f"Error: Input file '{input_file}' not found.")
+        return
+
+    client = init_client()
+    
+    # Read input users
+    with open(input_file, 'r') as f:
+        user_list = [l.strip() for l in f.readlines() if l.strip()]
+
+    # Filter out users already processed
+    processed_file = f'processedfollows_{CHUNK}.txt'
+    processed = set()
+    if os.path.exists(processed_file):
+        with open(processed_file, 'r') as f:
+            processed = set(l.strip() for l in f.readlines())
+    
+    user_list = [u for u in user_list if u not in processed]
+    total_users = len(user_list)
+    
+    print(f"Processing {total_users} users for 'follows' collection...")
+    print("-" * 30)
+
+    current_batch_data = {}
+    current_batch_users = []
+
+    for i, user in enumerate(user_list):
+        # CLEAN OUTPUT: User X/Total
+        print(f"User {i+1}/{total_users}")
+        
+        flws = collect_follows(client, user)
+        
+        current_batch_data[user] = flws
+        current_batch_users.append(user)
+
+        # Periodic Save
+        if (i + 1) % SAVE_EVERY_N_USERS == 0:
+            _save(current_batch_data, current_batch_users, CHUNK)
+            current_batch_data = {}
+            current_batch_users = []
+
+    # Final Save
+    if current_batch_data:
+        _save(current_batch_data, current_batch_users, CHUNK)
+    
+    # STOP TIMER & REPORT
+    end_run_time = time.time()
+    total_duration = end_run_time - start_run_time
+    minutes = total_duration / 60
+
+    print("\n" + "="*50)
+    print("                 FINAL REPORT for follows")
+    print("="*50)
+    print(f"USERS PROCESSED:      {total_users}")
+    print(f"TOTAL TIME:           {total_duration:.2f} seconds ({minutes:.2f} minutes)")
+    if total_users > 0:
+        avg = total_duration / total_users
+        print(f"AVERAGE PER USER:     {avg:.2f} seconds")
+    print("="*50 + "\n")
 
 if __name__ == '__main__':
-    CHUNK = int(sys.argv[1])
-
-    client = init_client(USERNAME, PASSWORD)
-    user_list = _read_list(f'batch_{CHUNK}.txt')
-    all_followers = dict()
-    processed = _read_list(f'processedf_{CHUNK}.txt')
-    n_processed = len(processed)
-    if n_processed > 0:
-        print(f'resuming at {n_processed}')
-
-    for i, user in enumerate(user_list[n_processed:]):
-        i += n_processed  # resume idx
-        followers = collect_follows(client, user)
-        all_followers[user] = followers
-        processed.append(user)
-
-        if (i + 1) % SAVE_EVERY_N_USERS == 0:
-            _save(all_followers, processed)
-            all_followers = dict()
-            processed = []
-
-    if len(all_followers) > 0:
-        _save(all_followers, processed)
+    main()
