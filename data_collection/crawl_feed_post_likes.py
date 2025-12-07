@@ -1,3 +1,6 @@
+# Per ora non lo ho utilizzato perchè va a cercare i like ad ogni post. per ora troppo specifico. magari in futuro
+
+
 import gzip
 import os
 import datetime
