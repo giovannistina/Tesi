@@ -4,121 +4,127 @@ import json
 import sys
 import datetime
 from tqdm import tqdm
-import re
-from collections import defaultdict
 
-def load_enc_users():
+# --- CONFIGURATION ---
+BASE_DEFAULT = '../data_collection/data'
+OUT_DEFAULT = 'results/clean_feed_likes.csv.gz'
+USER_MAP_FILE = 'results/enc_users.txt'
+FEED_MAP_FILE = 'results/enc_feeds.txt'
+# ---------------------
+
+def load_map(path):
     res = dict()
-    with open('results/enc_users.txt') as f:
+    if not os.path.exists(path): return res
+    # MODIFICA: encoding utf-8
+    with open(path, encoding='utf-8') as f:
         while line := f.readline():
-            
-            i, k = line.rstrip().split()
-            res[k] = int(i)
-    
+            parts = line.rstrip().split()
+            if len(parts) >= 2:
+                # Key is URI/DID, Value is ID
+                res[parts[1]] = int(parts[0])
     return res
 
-def load_enc_uris():
-    res = dict()
-    bad = 0
-    with open('results/enc_uris.txt') as f:
-        while line := f.readline():
-            try:
-                i, k = line.rstrip().split()
-                res[k] = int(i)
-            except:
-                bad += 1
-                print('bad line:', line)
-            
-    print('bad lines in enc_uris:', bad)
-    return res
+def gzip_iterator(BASE):
+    if not os.path.exists(BASE): return
+    files = sorted(os.listdir(BASE))
+    try: files.sort(key=lambda x: int(x.split('.')[0]))
+    except: pass
 
-def csv_iterator(BASE):
-    for f in sorted(os.listdir(BASE)):
-        if f.endswith('.csv.gz'):
-            yield os.path.join(BASE, f)
-
-        
-def valid_time(t):
-    try:
-        T = datetime.datetime.fromisoformat(t)
-        if T.date() > datetime.datetime(2024, 3, 18).date():
-            return False
-        elif T.date() < datetime.datetime(2023, 2, 17).date():
-            return False
-        return True
-    except ValueError: # invalid time
-        return False
-    except Exception as e:
-        print(e)
-        return None
+    for f in files:
+        full_path = os.path.join(BASE, f)
+        if os.path.isdir(full_path) and 'chunk' in f:
+            for sub in sorted(os.listdir(full_path)):
+                if sub.endswith('.gz'):
+                    yield os.path.join(full_path, sub)
+        elif f.endswith('.gz'):
+            yield full_path
 
 if __name__ == '__main__':
     
     start = datetime.datetime.now()
-    BASE = 'feed_posts_likes'
-    OUT = 'clean_feed_posts_likes'
+    BASE, OUT = BASE_DEFAULT, OUT_DEFAULT
+    
     for i in range(len(sys.argv)):
-        if sys.argv[i] == '-b':
-            BASE = sys.argv[i+1]
-        if sys.argv[i] == '-o':
-            OUT = sys.argv[i+1]
-        if sys.argv[i] == '-h':
-            print('Usage: python clean_data.py -b <input_dir> -o <output_dir>')
-            sys.exit(0)
+        if sys.argv[i] == '-b': BASE = sys.argv[i+1]
+        if sys.argv[i] == '-o': OUT = sys.argv[i+1]
 
-    user_map = load_enc_users()
-    ids = load_enc_uris()
-
-    if not os.path.exists(OUT):
-        os.makedirs(OUT)
-        print('created new folder:', OUT)
-        
-    print('processing files in', BASE, 'and saving to', OUT)
-
-
+    print("Loading maps...")
+    user_map = load_map(USER_MAP_FILE)
+    feed_map = load_map(FEED_MAP_FILE)
+    
+    # --- VERBOSE COUNTERS ---
     total_lines = 0
     bad_lines = 0
+    kept_likes = 0
     
-    for i, path in enumerate(csv_iterator(BASE)):
-        with gzip.open(path) as f:
-            out_path = os.path.join(OUT, path.split('/')[-1])
-            feed_name = os.path.basename(path)[:os.path.basename(path).find('.')]
-            users = set()
-            like_count = 0
-            with gzip.open(out_path, 'w') as out:
-                for line in tqdm(f):
+    null_uri = 0 # Not used in original for likes, but good practice
+    null_user = 0
+    null_date = 0
+    
+    print(f"Processing Feed Likes from {BASE} -> {OUT}")
+    
+    with gzip.open(OUT, 'wt', encoding='utf-8') as outf:
+        # CSV Header
+        outf.write("user_id,feed_id,date\n")
+
+        for path in gzip_iterator(BASE):
+            with gzip.open(path, 'rt', encoding='utf-8') as f:
+                for line in tqdm(f, desc=f"Reading {os.path.basename(path)}"):
                     total_lines += 1
+                    try: d = json.loads(line)
+                    except: 
+                        bad_lines += 1
+                        continue
                     
-                    liker, liked_author, liked_uri, t = line.decode('utf8').rstrip().split(',')
-                    uri = liked_uri + liked_author
-                    if uri not in ids:
-                        ids[uri] = len(ids)
+                    # Logic: Look for 'app.bsky.feed.like' records
+                    record = d.get('record')
+                    # Fallback for nested structures
+                    if not record: record = d.get('post', {}).get('record')
+                    if not record: continue
 
-                    if liker not in user_map:
-                        user_map[liker] = len(user_map)
+                    # Check type in URI or Record Type (if available)
+                    # In timeline dumps, we usually look at the record content
+                    # A like record has a 'subject'
+                    subject = record.get('subject')
+                    if not subject: continue
+                    
+                    target_uri = subject.get('uri', '')
+                    
+                    # Filter: Must be a like on a GENERATOR (Feed), not a post
+                    if 'app.bsky.feed.generator' not in target_uri:
+                        continue 
 
-                    if liked_author not in user_map:
-                        user_map[liked_author] = len(user_map)
+                    # Extract User
+                    user_did = d.get('user') or d.get('author', {}).get('did')
+                    if not user_did:
+                        null_user += 1
+                        continue
 
-                    date = int(datetime.datetime.fromisoformat(t).strftime('%Y%m%d%H%M'))
+                    # Extract Date
+                    t = record.get('createdAt')
+                    if not t: 
+                        null_date += 1
+                        continue
+                    
+                    # Resolve IDs
+                    u_id = user_map.get(user_did)
+                    f_id = feed_map.get(target_uri)
 
-                    row = f'{user_map[liker]},{user_map[liked_author]},{ids[uri]},{date}\n'
+                    if u_id is not None and f_id is not None:
+                        try:
+                            t = t.replace('Z', '+00:00')
+                            dt = datetime.datetime.fromisoformat(t)
+                            date_str = dt.strftime('%Y%m%d')
+                            
+                            outf.write(f"{u_id},{f_id},{date_str}\n")
+                            kept_likes += 1
+                        except: pass
+                    else:
+                        # Count how many we miss because of missing maps
+                        # (Expected to be high if feed_map is empty)
+                        pass
 
-                    out.write(row.encode('utf8'))
-                    like_count += 1
-
-        print(f'Processed {like_count} likes from {feed_name}.')
-        
-
-    with open(f'{OUT}/enc_users2.txt', 'w') as f:
-        for u, i in user_map.items():
-            f.write(f'{i} {u}\n')
-
-    with open(f'{OUT}/enc_uris2.txt', 'w') as f:
-        for u, i in ids.items():
-            f.write(f'{i} {u}\n')
-    
-
-    print('done in', datetime.datetime.now() - start)
-    print('total lines:', total_lines)
-    print('bad lines:', bad_lines)
+    print(f'\nDone in {datetime.datetime.now() - start}')
+    print(f'Total lines scanned: {total_lines}')
+    print(f'Kept Feed Likes: {kept_likes}')
+    print(f' (Note: If this is 0, it means no likes matched the known feeds list)')

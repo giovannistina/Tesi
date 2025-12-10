@@ -4,268 +4,211 @@ import json
 import sys
 import datetime
 from tqdm import tqdm
-import re
-from collections import defaultdict
+
+# --- CONFIGURATION (Adapted for Windows/Folders) ---
+BASE_DEFAULT = '../data_collection/data'
+OUT_DEFAULT = 'results/clean_feeds.jsonl.gz'
+USER_MAP_FILE = 'results/enc_users.txt'
+LANG_MAP_FILE = 'results/language_mapping.json'
+# ---------------------------------------------------
 
 def load_langmap():
-    with open('results/language_mapping.json') as f:
-        m = json.loads(f.read())
-    res = defaultdict(lambda: None)
-
-    for k, v in m.items():
-        res[k] = v
-    return res
+    if not os.path.exists(LANG_MAP_FILE):
+        return dict()
+    try:
+        # MODIFICATION: encoding utf-8
+        with open(LANG_MAP_FILE, encoding='utf-8') as f:
+            content = f.read().strip()
+            if not content: return dict()
+            return json.loads(content)
+    except: return dict()
 
 def load_enc_users():
     res = dict()
-    with open('results/enc_users.txt') as f:
-        while line := f.readline():
-            
-            i, k = line.rstrip().split()
-            res[k] = int(i)
-    
-    return res
+    if not os.path.exists(USER_MAP_FILE):
+        print(f"Error: {USER_MAP_FILE} not found.")
+        return res 
 
-def load_enc_uris():
-    res = dict()
-    bad = 0
-    with open('results/enc_uris.txt') as f:
+    # MODIFICATION: encoding utf-8
+    with open(USER_MAP_FILE, encoding='utf-8') as f:
         while line := f.readline():
-            try:
-                i, k = line.rstrip().split()
+            parts = line.rstrip().split()
+            if len(parts) >= 2:
+                i, k = parts[0], parts[1]
                 res[k] = int(i)
-            except:
-                bad += 1
-                print('bad line:', line)
-            
-    print('bad lines in enc_uris:', bad)
     return res
 
-def jsonl_iterator(BASE):
-    for f in sorted(os.listdir(BASE)):
-        if f.endswith('.jsonl.gz'):
-            yield os.path.join(BASE, f)
+def gzip_iterator(BASE):
+    if not os.path.exists(BASE): return
+    files = sorted(os.listdir(BASE))
+    
+    # MODIFICATION: Try/Except to avoid crash if filenames are not numbers
+    try: files.sort(key=lambda x: int(x.split('.')[0]))
+    except: pass
 
-        
+    for f in files:
+        full_path = os.path.join(BASE, f)
+        # Support for chunk structure (if present) or direct files
+        if os.path.isdir(full_path) and 'chunk' in f:
+            for sub in sorted(os.listdir(full_path)):
+                if sub.endswith('.gz'):
+                    yield os.path.join(full_path, sub)
+        elif f.endswith('.gz'):
+            yield full_path
+
 def valid_time(t):
     try:
+        # MODIFICATION: Fix ISO format
+        t = t.replace('Z', '+00:00')
         T = datetime.datetime.fromisoformat(t)
-        if T.date() > datetime.datetime(2024, 3, 18).date():
-            return False
-        elif T.date() < datetime.datetime(2023, 2, 17).date():
-            return False
+        
+        # MODIFICATION: Removed upper limit (2024) to accept 2025 data
+        # if T.date() > datetime.datetime(2024, 3, 18).date(): return False
+        
+        if T.date() < datetime.datetime(2023, 2, 17).date(): return False
         return True
-    except ValueError: # invalid time
-        return False
-    except Exception as e:
-        print(e)
-        return None
+    except: return False
 
 if __name__ == '__main__':
     
     start = datetime.datetime.now()
-    BASE = 'feeds'
-    OUT = 'clean_feeds'
+    BASE, OUT = BASE_DEFAULT, OUT_DEFAULT
+    
     for i in range(len(sys.argv)):
-        if sys.argv[i] == '-b':
-            BASE = sys.argv[i+1]
-        if sys.argv[i] == '-o':
-            OUT = sys.argv[i+1]
-        if sys.argv[i] == '-h':
-            print('Usage: python clean_data.py -b <input_dir> -o <output_dir>')
-            sys.exit(0)
+        if sys.argv[i] == '-b': BASE = sys.argv[i+1]
+        if sys.argv[i] == '-o': OUT = sys.argv[i+1]
 
+    print("Loading maps...")
     language_map = load_langmap()
     user_map = load_enc_users()
-    ids = load_enc_uris()
+    
+    # Local map for Feeds (URI -> ID)
+    feed_ids = dict()
 
-    user_pattern = r'(?!\b)@[\w.-]+\w+' # match @usernames
-    matcher = re.compile(pattern=user_pattern)
-
-    if not os.path.exists(OUT):
-        os.makedirs(OUT)
-        print('created new folder:', OUT)
-        
-    print('processing files in', BASE, 'and saving to', OUT)
-
-
+    # --- ORIGINAL VERBOSE COUNTERS ---
     total_lines = 0
     bad_lines = 0
-    not_already_covered = 0
+    kept_feeds = 0
     
-    for i, path in enumerate(jsonl_iterator(BASE)):
-        with gzip.open(path) as f:
-            out_path = os.path.join(OUT, path.split('/')[-1])
-            feed_name = os.path.basename(path)[:os.path.basename(path).find('.')]
-            users = set()
-            post_count = 0
-            with gzip.open(out_path, 'w') as out:
-                for line in tqdm(f):
+    null_uri = 0
+    null_cid = 0
+    null_creator = 0
+    null_name = 0
+    null_description = 0
+    null_description_facets = 0
+    null_avatar = 0
+    null_like_count = 0
+    null_viewer = 0
+    null_indexed_at = 0
+
+    print(f"Processing feeds from {BASE} -> {OUT}")
+    
+    # MODIFICATION: encoding utf-8
+    with gzip.open(OUT, 'wt', encoding='utf-8') as outf:
+        
+        for path in gzip_iterator(BASE):
+            with gzip.open(path, 'rt', encoding='utf-8') as f:
+                for line in tqdm(f, desc=f"Reading {os.path.basename(path)}"):
                     total_lines += 1
-                    post_id, user_id, instance = None, None, None
-                    date, text, langs = None, None, None
-                    like_count, reply_count, repost_count = None, None, None
-                    reply_to, replied_author = None, None
-                    thread_root, thread_root_author = None, None
-                    quotes, quoted_author = None, None
-                    labels =  None
-                    
                     try:
-                        d = json.loads(line.decode('utf8'))
-                    except json.JSONDecodeError:
-                        print('json decode error. Skipping...')
-                        bad_lines += 1
-                        continue
-                    except UnicodeDecodeError:
-                        print('Unicode decode error. Skipping...')
-                        bad_lines += 1
-                        continue
-                    except Exception as e:
-                        print('Unknown error:', e)
+                        d = json.loads(line)
+                    except:
                         bad_lines += 1
                         continue
                     
-                    t = d['post']['record'].get('createdAt', 
-                                                    d['post']['record'].get('created_at'))
-                    if t is not None and valid_time(t):
-                        post_count += 1
+                    # Original Logic: Look for generators
+                    uri = d.get('uri')
+                    if not uri or 'app.bsky.feed.generator' not in uri:
+                        continue 
 
-                        handle = d['post']['author']['handle']
-                        if handle in user_map:
-                            user_id = user_map[handle]
-                        else:
-                            user_map[handle] = len(user_map)
-                            user_id = user_map[handle]
-                        users.add(user_id)
-                        
-                        
-                        uri = d['post'].get('uri') + handle 
-                        if uri not in ids:
-                            ids[uri] = len(ids)
-                            not_already_covered += 1
-                        post_id = ids[uri]
-                        
-                            
+                    # Look for record (variable structure)
+                    record = d.get('record')
+                    if not record: record = d.get('value') # Fallback for some dumps
+                    if not record: continue
 
-                        # INSTANCE, the instance from which the user is from
-                        # obtained from the last part of the handle
-                        instance = '.'.join(handle.split('.')[1:])
-                        
-                        # DATE, the date of the post in the format YYYYMMDDHHMM
-                        date = int(datetime.datetime.fromisoformat(t).strftime('%Y%m%d%H%M'))
+                    kept_feeds += 1
 
-                        # TEXT, the text of the post
-                        # replace @usernames with their corresponding integer   
-                        text = d['post']['record'].get('text', d['post']['record'].get('body'))
-                        for m in matcher.findall(text):
-                            m = m[1:] # remove @
-                            if m not in user_map:
-                                user_map[m] = len(user_map)
-                            text = re.sub(pattern=m, repl=f"@{user_map[m]}", string=text)
-
-                        # LANGS, the language(s) of the post
-                        # standardized to the ISO 639-3 code
-                        langs = d['post']['record'].get('langs', d['post']['record'].get('lang'))
-                        if langs and isinstance(langs, list):
-                            langs = [language_map[lang.lower()] for lang in langs]
-                        elif isinstance(langs, str):
-                            langs = [language_map[langs.lower()]]
-
-
-                        # likes, shares, comments
-                        like_count = d['post'].get('like_count', 0)
-                        reply_count = d['post'].get('reply_count', 0)
-                        repost_count = d['post'].get('repost_count', 0)
-
-                        # REPLY_TO, the post_id of the post being replied to
-                        # obtained from a mapping of post URIs+handles to integers
-                        if d['reply'] is not None:
-                            replied_author = d['reply']['parent']['author']['handle']
-                            reply_to = d['reply']['parent'].get('uri') + replied_author
-                            if reply_to not in ids:
-                                ids[reply_to] = len(ids)
-                            reply_to = ids[reply_to]
-                            if replied_author not in user_map:
-                                user_map[replied_author] = len(user_map)
-                            replied_author = user_map[replied_author]
-                            
-                            # THREAD_ROOT, the post_id of the root post of the thread
-                            # obtained from a mapping of post URIs+handles to integers
-                            thread_root_author = d['reply']['root']['author']['handle']
-                            if thread_root_author not in user_map:
-                                user_map[thread_root_author] = len(user_map)
-                            
-                            thread_root = d['reply']['root'].get('uri') + thread_root_author
-                            if thread_root not in ids:
-                                ids[thread_root] = len(ids)
-                            thread_root = ids[thread_root]
-                            thread_root_author = user_map[thread_root_author]
-
+                    # Extract Fields
+                    cid = d.get('cid')
+                    creator_did = d.get('creator', {}).get('did')
                     
-                        # QUOTES, the post_id of the post being quoted
-                        # obtained from a mapping of post URIs+handles to integers
-                        embed = d['post'].get('embed') 
-                        if embed is not None and 'record' in embed:
-                            quoted = embed['record']
-                            if quoted is not None and 'author' in quoted:
-                                try:
-                                    quoted_author = quoted['author']['handle']
-                                    
-                                    if quoted_author not in user_map:
-                                        user_map[quoted_author] = len(user_map)
-                                    
+                    # Fallback for creator from URI if missing in dict
+                    if not creator_did and uri.startswith('at://'):
+                        try: creator_did = uri.split('/')[2]
+                        except: pass
 
-                                    quotes = quoted.get('uri') + quoted_author
-                                    if quotes not in ids:
-                                        ids[quotes] = len(ids)
-                                    quotes = ids[quotes]
-                                    quoted_author = user_map[quoted_author]
-                                except KeyError: # no author
-                                    pass
-                                
-                        # LABELS, the labels (content warning) of the post
-                        lbs = d['post']['record'].get('labels')
-                        if lbs is not None:
-                            lbs = lbs.get('values')
-                            try:
-                                labels = [l.get('val') for l in lbs]
-                            except AttributeError:
-                                labels = lbs
-                        
-                        
-                        row = json.dumps({
-                            'post_id': post_id,
-                            'user_id': user_id,
-                            'instance': instance,
-                            'date': date,
-                            'text': text,
-                            'langs': langs,
-                            'like_count': like_count,
-                            'reply_count': reply_count,
-                            'repost_count': repost_count,
-                            'reply_to': reply_to,
-                            'replied_author': replied_author,
-                            'thread_root': thread_root,
-                            'thread_root_author': thread_root_author,
-                            'quotes': quotes,
-                            'quoted_author': quoted_author,
-                            'labels': labels
+                    name = record.get('displayName')
+                    description = record.get('description')
+                    description_facets = record.get('descriptionFacets')
+                    avatar = record.get('avatar')
+                    like_count = d.get('likeCount')
+                    viewer = d.get('viewer')
+                    indexed_at = d.get('indexedAt')
+                    
+                    # Count Nulls
+                    if not uri: null_uri += 1
+                    if not cid: null_cid += 1
+                    if not creator_did: null_creator += 1
+                    if not name: null_name += 1
+                    if not description: null_description += 1
+                    if not description_facets: null_description_facets += 1
+                    if not avatar: null_avatar += 1
+                    if like_count is None: null_like_count += 1
+                    if not viewer: null_viewer += 1
+                    if not indexed_at: null_indexed_at += 1
 
-                        }) + '\n'
-                        out.write(row.encode('utf8'))
-        print(f'Processed {post_count} posts from {feed_name}.')
-        print(f'Found {len(users)} unique users.')
+                    # Mapping
+                    creator_id = None
+                    if creator_did:
+                        if creator_did not in user_map:
+                            user_map[creator_did] = len(user_map)
+                        creator_id = user_map[creator_did]
+                    
+                    feed_num_id = None
+                    if uri:
+                        if uri not in feed_ids:
+                            feed_ids[uri] = len(feed_ids)
+                        feed_num_id = feed_ids[uri]
 
-    with open(f'{OUT}/enc_users2.txt', 'w') as f:
-        for u, i in user_map.items():
-            f.write(f'{i} {u}\n')
+                    # Write Output
+                    clean_obj = {
+                        'feed_id': feed_num_id,
+                        'uri': uri,
+                        'cid': cid,
+                        'creator_id': creator_id,
+                        'name': name,
+                        'description': description,
+                        'like_count': like_count,
+                        'indexed_at': indexed_at
+                    }
+                    
+                    outf.write(json.dumps(clean_obj) + '\n')
 
-    with open(f'{OUT}/enc_uris2.txt', 'w') as f:
-        for u, i in ids.items():
-            f.write(f'{i} {u}\n')
+    # Save Maps (Crucial for next steps)
+    print("Saving updated maps...")
+    with open('results/enc_users_updated.txt', 'w', encoding='utf-8') as f:
+        for u, i in user_map.items(): f.write(f'{i} {u}\n')
+        
+    with open('results/enc_feeds.txt', 'w', encoding='utf-8') as f:
+        for u, i in feed_ids.items(): f.write(f'{i} {u}\n')
+
+    # Final Report
+    print(f'\nDone in {datetime.datetime.now() - start}')
+    print(f'Total lines scanned: {total_lines}')
+    print(f'Bad lines: {bad_lines}')
+    print(f'Kept Feeds: {kept_feeds}')
+    print()
+    print(f'null uri: {null_uri}')
+    print(f'null cid: {null_cid}')
+    print(f'null creator: {null_creator}')
+    print(f'null name: {null_name}')
+    print(f'null description: {null_description}')
+    print(f'null description_facets: {null_description_facets}')
+    print(f'null avatar: {null_avatar}')
+    print(f'null like_count: {null_like_count}')
+    print(f'null viewer: {null_viewer}')
+    print(f'null indexed_at: {null_indexed_at}')
+    print()
     
-
-    print('done in', datetime.datetime.now() - start)
-    print('total lines:', total_lines)
-    print('bad lines:', bad_lines)
-    print('not already covered:', not_already_covered)
+    # WINDOWS MODIFICATION: Sort removed
+    # os.system(...)
