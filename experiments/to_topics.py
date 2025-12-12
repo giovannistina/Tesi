@@ -4,87 +4,85 @@ import json
 import sys
 import datetime
 from tqdm import tqdm
-from collections import defaultdict
-from datetime import datetime
+import time
 
+# --- CONFIGURATION ---
+# Input: Your clean data
+BASE_DEFAULT = '../cleaning&processing/results/clean'
+# Output: Folder where text files for topic modeling will be saved
+OUT_DEFAULT = 'results/topics'
+# ---------------------
 
 def gzip_iterator(BASE):
-    for f in sorted(os.listdir(BASE), key=lambda x: int(x.split('.')[0])):
-        if f.endswith('.gz'):
-            full_path = os.path.join(BASE, f)
-                
-            print(f'processing {full_path}...')
-            yield full_path
+    if not os.path.exists(BASE): 
+        print(f"Error: Directory {BASE} not found.")
+        return
+    # Sort files numerically
+    files = sorted([f for f in os.listdir(BASE) if f.endswith('.gz')], 
+                   key=lambda x: int(x.split('.')[0]) if x[0].isdigit() else x)
+    for f in files:
+        f_path = os.path.join(BASE, f)
+        print(f'processing {f_path}...')
+        yield f_path
 
 if __name__ == '__main__':
     
-    start = datetime.now()
+    start = time.time()
     
-    BASE = 'clean'
-    OUT = 'results/topics'
-    for i in range(len(sys.argv)):
-        if sys.argv[i] == '-b':
-            BASE = sys.argv[i+1]
-        if sys.argv[i] == '-o':
-            OUT = sys.argv[i+1]
+    BASE = BASE_DEFAULT
+    OUT = OUT_DEFAULT
 
+    # Command line arguments
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == '-b': BASE = sys.argv[i+1]
+        if sys.argv[i] == '-o': OUT = sys.argv[i+1]
+
+    # Create output directory
     if not os.path.exists(OUT):
         os.makedirs(OUT)
 
-
-    date_format = "%Y%m%d%H%M"
-    badlines = 0
-    july_count = 0
-    feb_count = 0
-    print('processing files in', BASE)
-
-    with open(f'{OUT}/13-15jul.txt', 'a') as july:
-        with open(f'{OUT}/6-8feb.txt', 'a') as feb:
-
-            for path in gzip_iterator(BASE):
-                with gzip.open(path) as f:
-                    for line in tqdm(f):
-                        try:
-                            post = json.loads(line.strip())
-                        except json.JSONDecodeError as e:
-                            print(e)
-                            badlines += 1
-                            continue
-                        except UnicodeDecodeError as e:
-                            print(e)
-                            badlines += 1
-                            continue
-                        except Exception as e:
-                            print(e)
-                            badlines += 1
-                            continue
-                        langs = post.get('langs')
-                        sent_label = post.get('sent_label')
-                        if sent_label != 0: # only negative sentiment
-                            continue
-                        if langs is not None and len(langs) == 1 and 'eng' in langs:
-
-                            t = post.get('date')
-                            t = datetime.strptime(str(t), date_format)
-                            date = t.date() 
-                            
-                            if datetime(2024, 2, 6).date() <= date <= datetime(2024, 2, 8).date():
-                                text = post.get('text')
-                                text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-                                feb.write(text+'\n')
-                                feb_count += 1
-                            
-                            elif datetime(2023, 7, 13).date() <= date <= datetime(2023, 7, 15).date():
-                                text = post.get('text')
-                                text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-                                july.write(text+'\n')
-                                july_count += 1
-
-          
-    elapsed = datetime.now() - start
-    print('done, took', elapsed)
-    print('bad lines:', badlines)
-    print('feb:', feb_count)
-    print('july:', july_count)
-
+    print(f'Processing files in {BASE} -> {OUT}')
     
+    # Output file for all English posts
+    out_file_path = os.path.join(OUT, 'english_posts.txt')
+    
+    count = 0
+    badlines = 0
+
+    # WINDOWS FIX: encoding='utf-8'
+    with open(out_file_path, 'w', encoding='utf-8') as txt_file:
+        
+        for path in gzip_iterator(BASE):
+            # WINDOWS FIX: encoding='utf-8' and mode='rt'
+            with gzip.open(path, 'rt', encoding='utf-8') as f:
+                for line in tqdm(f, desc=f"Reading {os.path.basename(path)}"):
+                    try:
+                        post = json.loads(line.strip())
+                        
+                        # 1. Check Language (English only)
+                        # We use 'langs' list from clean data
+                        langs = post.get('langs')
+                        is_eng = False
+                        if langs and isinstance(langs, list):
+                            # Check for 'en' or 'eng'
+                            if 'en' in langs or 'eng' in langs:
+                                is_eng = True
+                        
+                        if is_eng:
+                            # 2. Extract Text
+                            text = post.get('text', '')
+                            if text:
+                                # Clean newlines/tabs to keep 1 post per line in the txt file
+                                text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+                                txt_file.write(text + '\n')
+                                count += 1
+                                
+                    except Exception as e:
+                        badlines += 1
+                        continue
+
+    elapsed = time.time() - start
+    print(f'Done in {int(elapsed)} s')
+    print(f'Bad lines: {badlines}')
+    print(f'Total English posts saved: {count}')
+    print(f'File saved to: {out_file_path}')
