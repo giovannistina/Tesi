@@ -34,9 +34,11 @@ def load_langmap():
 
 def load_enc_users():
     res = dict()
+    # Se il file non c'è, non importa! Restituiamo un dizionario vuoto
+    # e lo riempiremo man mano che troviamo nuovi utenti.
     if not os.path.exists(USER_MAP_FILE):
-        print(f"Error: {USER_MAP_FILE} not found. Run encode_users.py first.")
-        sys.exit(1)
+        print(f"⚠️ {USER_MAP_FILE} not found. Building new map from scratch...")
+        return res
 
     with open(USER_MAP_FILE, encoding='utf-8') as f:
         while line := f.readline():
