@@ -333,7 +333,7 @@ if __name__ == '__main__':
 
     # Save maps
     print("\nSaving maps...")
-    with open('results/enc_users_updated.txt', 'w', encoding='utf-8') as f:
+    with open(USER_MAP_FILE, 'w', encoding='utf-8') as f:  # <--- MODIFICA QUI
         for u, i in user_map.items(): f.write(f'{i} {u}\n')
     with open('results/enc_uris.txt', 'w', encoding='utf-8') as f:
         for u, i in ids.items(): f.write(f'{i} {u}\n')
