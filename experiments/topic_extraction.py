@@ -1,78 +1,58 @@
-
 import sys
 from tqdm import tqdm
 import time
 import os
+import torch
+import numpy as np
+import pandas as pd
+
+# BERTopic imports
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
-from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance
-import numpy as np
+from bertopic.representation import KeyBERTInspired
 from umap import UMAP
-from bertopic import BERTopic
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from hdbscan import HDBSCAN
 
+# --- CONFIGURATION ---
+BASE_DEFAULT = 'results/topics/english_posts.txt'
+
+# ### TEST LIMIT: 2000 posts (~2-4 mins on CPU). Set to None for full run ###
+TEST_LIMIT = 2000
+# ##########################################################################
 
 def load_docs(BASE):
     docs = []
-    with open(BASE) as f:
-        for line in tqdm(f):
-            line = line.rstrip()
-            # REMOVE non ascii characters 
-            line = ''.join([i if ord(i) < 128 else ' ' for i in line])
+    # WINDOWS FIX: encoding='utf-8'
+    with open(BASE, encoding='utf-8') as f:
+        for i, line in enumerate(tqdm(f, desc="Loading docs")):
+            
+            # ### TEST LIMIT CHECK ###
+            if TEST_LIMIT and i >= TEST_LIMIT:
+                print(f"⚠️ Test Limit reached: loaded {TEST_LIMIT} docs.")
+                break
+            # ########################
 
+            line = line.rstrip()
+            # Remove non-ascii characters
+            line = ''.join([i if ord(i) < 128 else ' ' for i in line])
             if line:
                 docs.append(line)
     return list(set(docs)) 
 
-
-
-
 def rescale(x, inplace=False):
-    """ Rescale an embedding so optimization will not have convergence issues.
-    """
     if not inplace:
         x = np.array(x, copy=True)
-
     x /= np.std(x[:, 0]) * 10000
-
     return x
 
-def kmenans_fit_transform(docs, embeddings):
-    from sklearn.cluster import KMeans
-
-    representation_model = MaximalMarginalRelevance(diversity=0.4) 
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2', 
-                                          device='cuda')
-    vectorizer_model = CountVectorizer(stop_words="english",                    )
-
-
-
-    cluster_model = KMeans(n_clusters=20, random_state=42)
+def fit_transform(docs, embeddings, device):
+    print("Initializing UMAP and HDBSCAN...")
     
-    model = BERTopic(
-        embedding_model=embedding_model,
-        vectorizer_model=vectorizer_model,
-        representation_model=representation_model,
-        hdbscan_model=cluster_model,
-        #low_memory=True,
-        calculate_probabilities=False,
-        language='english',
-        verbose=True
-        )
-    
-    topics = model.fit_transform(documents=docs, embeddings=embeddings)
-    
-    return model, topics
-
-
-def fit_transform(docs, embeddings):
-
-    # Initialize and rescale PCA embeddings
+    # 1. Dimensionality Reduction
     pca_embeddings = rescale(PCA(n_components=5).fit_transform(embeddings))
 
-    # Start UMAP from PCA embeddings
     umap_model = UMAP(
         n_neighbors=15,
         n_components=5,
@@ -82,88 +62,114 @@ def fit_transform(docs, embeddings):
         random_state=42
     )
 
-    vectorizer_model = CountVectorizer(stop_words="english",                    )
+    # 2. Clustering
+    # Dynamic cluster size adjustment for small tests
+    min_cluster = 100
+    if TEST_LIMIT and TEST_LIMIT <= 2000:
+        min_cluster = 15 # Smaller clusters for test data
+        print(f"⚠️ Test Mode: reduced min_cluster_size to {min_cluster}")
 
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2', 
-                                          device='cuda')
+    hdbscan_model = HDBSCAN(
+        min_cluster_size=min_cluster,
+        metric='euclidean', 
+        prediction_data=True
+    )
 
+    # 3. Vectorizer
+    vectorizer_model = CountVectorizer(stop_words="english")
+
+    # 4. Embedding Model
+    embedding_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+
+    # 5. Representation
     representation_model = KeyBERTInspired()
 
-    hdbscan_model = HDBSCAN(min_cluster_size=100,
-                            metric='euclidean', 
-                            prediction_data=True
-                            )
+    print("Building BERTopic model...")
     model = BERTopic(
         embedding_model=embedding_model,
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
-        #low_memory=True,
-        nr_topics=5,
+        nr_topics=5, 
         calculate_probabilities=False,
         language='english',
         verbose=True
-        )
+    )
     
-    topics = model.fit_transform(documents=docs, embeddings=embeddings)
+    print("Fitting model...")
+    topics, probs = model.fit_transform(documents=docs, embeddings=embeddings)
     
     return model, topics
-    
 
 if __name__ == '__main__':
     
     tick = time.time()
-    BASE = 'chunk.txt'
+    BASE = BASE_DEFAULT
     
     for i in range(len(sys.argv)):
-        if sys.argv[i] == '-b':
-            BASE = sys.argv[i+1]
-        
+        if sys.argv[i] == '-b': BASE = sys.argv[i+1]
 
-    print('processing files in', BASE)
+    print(f'Processing file: {BASE}')
 
     if not os.path.exists(BASE):
-        print('file', BASE, 'does not exist.')
+        print(f'Error: File {BASE} does not exist.')
         sys.exit(1)
-    else:
-        time_window = BASE.split('.')[0]
-        if not os.path.exists(time_window):
-            os.mkdir(time_window)
-
     
+    base_dir = os.path.dirname(BASE)
+    filename = os.path.basename(BASE).split('.')[0]
+    output_dir = os.path.join(base_dir, f"{filename}_analysis")
+    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
+
+    # 1. Load Docs
     docs = load_docs(BASE)
-    print(len(docs), 'documents loaded.')
+    print(f'{len(docs)} documents loaded.')
 
-    if not os.path.exists(f'{time_window}/embeddings.npy'):
-        print('computing embeddings...')
-        sentence_model = SentenceTransformer('all-MiniLM-L6-v2', device='cuda')
-        embeddings = sentence_model.encode(docs, show_progress_bar=True) # this is a ndarray
-        print('saving embeddings...')
-        np.save(f'{time_window}/embeddings.npy', embeddings)
+    if len(docs) < 20:
+        print("Error: Not enough documents (>20 needed).")
+        sys.exit(0)
+
+    # 2. Embeddings
+    emb_path = os.path.join(output_dir, 'embeddings.npy')
     
+    # Don't save embeddings during test to avoid polluting the real run later
+    if TEST_LIMIT:
+        print('Computing embeddings (Test Mode)...')
+        sentence_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+        embeddings = sentence_model.encode(docs, show_progress_bar=True)
     else:
-        print('loading embeddings...')
-        embeddings = np.load(f'{time_window}/embeddings.npy')
-        print('done.')
+        # Full run logic
+        if not os.path.exists(emb_path):
+            print('Computing embeddings...')
+            sentence_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+            embeddings = sentence_model.encode(docs, show_progress_bar=True)
+            print('Saving embeddings...')
+            np.save(emb_path, embeddings)
+        else:
+            print('Loading existing embeddings...')
+            embeddings = np.load(emb_path)
 
+    # 3. Fit Model
+    model, topics = fit_transform(docs, embeddings, device)
     
-
-
-    print('fitting model...')
-    model, topics = fit_transform(docs, embeddings)
+    # 4. Save Results
+    print('Saving results...')
     
-    print('saving model...')
-    model.save(f'{time_window}/topic_model.bin')
-
-    print('saving topics info...')
-    info = model.get_topic_info() # this is a pandas dataframe
-    info.to_csv(f'{time_window}/topics_info.csv', index=False)
+    # CSV for plotting
+    info = model.get_topic_info()
+    info.to_csv('results/topics_info.csv', index=False)
     
-    print('saving topics...')
-    with open(f'{time_window}/topics.txt', 'w') as f:
+    # TXT List
+    with open(os.path.join(output_dir, 'topics.txt'), 'w', encoding='utf-8') as f:
+        if isinstance(topics, np.ndarray): topics = topics.tolist()
         for topic in topics:
             f.write(f"{topic}\n")
         
     tock = time.time()
-    print('done.', int(tock-tick), 's')
+    print('Done.', int(tock-tick), 's')
+    print(f"Results saved to results/topics_info.csv")

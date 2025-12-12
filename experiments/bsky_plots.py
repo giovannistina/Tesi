@@ -1,222 +1,289 @@
-import matplotlib.pyplot as plt
+import os
+import sys
+import gzip
+import json
+import glob
 import pandas as pd
-from collections import defaultdict
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
-# pip install adjustText
-try:
-    from adjustText import adjust_text
-except ImportError:
-    print('Please run pip install adjustText')
+from datetime import datetime
 
-RW = 7 # rolling window
+# --- CONFIGURATION ---
+RESULTS_DIR = 'results'
+PLOTS_DIR = 'results/plots'
+FEED_DATA_DIR = '../data_collection/feed_likes_data'
+# ---------------------
 
-# decorator advising the user to run the required scripts
-def require_script(script):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            try:
-                func(*args, **kwargs)
-            except FileNotFoundError:
-                print(f"Please run {script} first.")
-        return wrapper
-    return decorator
-
-def compute_iqr(data):
-    q1 = np.percentile(data, 25)
-    q3 = np.percentile(data, 75)
-    mn = np.mean([x for x in data if q1 <= x <= q3])
-    return q1, q3, mn # lower quartile, upper quartile, mean of the IQR
-
-def load_post_stats():
-    toiqr = defaultdict(lambda: defaultdict(int))
-    with open('post_stats.txt') as f:
-        head = f.readline()
-        while line := f.readline():
-            date, _, user = line.rstrip().split()
-            try:
-                date = int(date)
-            except ValueError:
-                continue
-            user = int(user)
-            toiqr[date][user] += 1
+def setup_plotting():
+    """Sets up the visual style for the plots."""
+    print("-> Initializing graphics engine (Seaborn/Matplotlib)...")
+    sns.set_theme(style="whitegrid")
+    plt.rcParams.update({'figure.figsize': (12, 7)})
     
-    dates, avg_daily_posts, daily_posts, active_users = [], [], [], []
-    means, q1s, q3s = [], [], []
+    if not os.path.exists(PLOTS_DIR):
+        os.makedirs(PLOTS_DIR)
+        print(f"-> Created directory: {PLOTS_DIR}")
 
-    for dt, users in sorted(toiqr.items(), key=lambda x: x[0]):
-        post_counts = []
-        for user, post_count in users.items():
-            post_counts.append(post_count)
-        dates.append(dt)
-        active_users.append(len(post_counts))
-        avg_daily_posts.append(np.mean(post_counts))
-        daily_posts.append(sum(post_counts))
+def load_data_frame(filename, names=None, sep=' '):
+    """Helper to load compressed CSV/TXT files safely."""
+    path = os.path.join(RESULTS_DIR, filename)
+    if not os.path.exists(path):
+        print(f"   [SKIP] File {filename} not found.")
+        return None
+    try:
+        if filename.endswith('.gz'):
+            return pd.read_csv(path, compression='gzip', sep=sep, names=names, encoding='utf-8')
+        else:
+            return pd.read_csv(path, sep=sep, names=names, encoding='utf-8')
+    except Exception as e:
+        print(f"   [ERROR] Could not load {filename}: {e}")
+        return None
+
+# --- PLOT FUNCTIONS ---
+
+def plot_daily_activity():
+    print("1. Generating 'Daily Activity' plot...", end=' ')
+    df = load_data_frame('post_stats.txt.gz', names=['date', 'post_id', 'user_id'])
+    if df is None or df.empty: 
+        print("SKIPPED (No Data)")
+        return
+
+    daily_counts = df.groupby('date').size().reset_index(name='count')
+    daily_counts['date'] = daily_counts['date'].astype(str)
+    
+    plt.figure()
+    sns.barplot(data=daily_counts, x='date', y='count', color='royalblue')
+    plt.xticks(rotation=45)
+    plt.title('Daily Posts Activity')
+    plt.ylabel('Number of Posts')
+    plt.xlabel('Date')
+    plt.tight_layout()
+    outfile = os.path.join(PLOTS_DIR, 'daily_activity.png')
+    plt.savefig(outfile)
+    plt.close()
+    print(f"DONE -> {outfile}")
+
+def plot_languages():
+    print("2. Generating 'Languages' plot...", end=' ')
+    df = load_data_frame('all_langs.txt.gz', names=['lang', 'count'])
+    if df is None or df.empty: 
+        print("SKIPPED (No Data)")
+        return
+
+    top_langs = df.head(10)
+    
+    plt.figure()
+    sns.barplot(data=top_langs, x='lang', y='count', palette='viridis')
+    plt.title('Top 10 Languages')
+    plt.yscale('log')
+    plt.ylabel('Count (Log Scale)')
+    plt.xlabel('Language')
+    plt.tight_layout()
+    outfile = os.path.join(PLOTS_DIR, 'languages_dist.png')
+    plt.savefig(outfile)
+    plt.close()
+    print(f"DONE -> {outfile}")
+
+def plot_sentiment_timeline():
+    print("3. Generating 'Sentiment' plot...", end=' ')
+    path = os.path.join(RESULTS_DIR, 'sentiment_table.csv.gz')
+    if not os.path.exists(path):
+        print("SKIPPED (File missing)")
+        return
+
+    try:
+        df = pd.read_csv(path, compression='gzip', encoding='utf-8')
+        if df.empty: 
+            print("SKIPPED (Empty)")
+            return
         
-        q1, q3, mn  = compute_iqr(post_counts)
-        q1s.append(q1)
-        q3s.append(q3)
-        means.append(mn)
-    return dates, avg_daily_posts, daily_posts, active_users, q1s, q3s, means
+        df['date'] = df['date'].astype(str)
+        df_melted = df.melt(id_vars=['date'], value_vars=['positive', 'negative', 'neutral'], 
+                            var_name='Sentiment', value_name='Count')
 
-@require_script('post_stats.py')
-def plot_posts_per_user():
-    dates, avg_daily_posts, _, _, q1s, q3s, means = load_post_stats()
-    mns =pd.Series(np.array(means), index=pd.to_datetime(dates, format='%Y%m%d'))
-    mns.rolling(RW).mean().plot(label='iqr')
-    adp = pd.Series(np.array(avg_daily_posts), index=pd.to_datetime(dates, format='%Y%m%d'))
-    ax = adp.rolling(RW).mean().plot(figsize=(8,3), color='red', label='global', alpha=.6)
-    #mx2 =pd.Series(np.array(mx), index=pd.to_datetime(dates, format='%Y%m%d'))
-    #ax = mx2.rolling(RW).mean().plot()
+        plt.figure()
+        sns.lineplot(data=df_melted, x='date', y='Count', hue='Sentiment', marker='o')
+        plt.xticks(rotation=45)
+        plt.title('Sentiment Evolution')
+        plt.tight_layout()
+        outfile = os.path.join(PLOTS_DIR, 'sentiment_timeline.png')
+        plt.savefig(outfile)
+        plt.close()
+        print(f"DONE -> {outfile}")
+    except Exception as e:
+        print(f"ERROR: {e}")
 
-    eq1 = pd.Series(q1s,  index=pd.to_datetime(dates, format='%Y%m%d')).rolling(RW).mean()
-    eq3 = pd.Series(q3s,  index=pd.to_datetime(dates, format='%Y%m%d')).rolling(RW).mean()
-    ax.fill_between(pd.to_datetime(dates, format='%Y%m%d'),eq1, eq3, alpha=.25)
-    ax.set_ylabel('posts per user',fontsize=15)
-    plt.yticks(fontsize=13)
-    plt.xticks(fontsize=13)
-    plt.grid(alpha=.2)
-    plt.ylim(-0.5, 9.3)
-    plt.legend(fontsize=13, loc='best')
+def plot_inter_event_time():
+    print("4. Generating 'Inter-Event Time' plot...", end=' ')
+    df = load_data_frame('inter-time.txt', names=['first_date', 'days'])
+    if df is None or df.empty: 
+        print("SKIPPED (No Data)")
+        return
+
+    x = np.sort(df['days'])
+    y = np.arange(1, len(x) + 1) / len(x)
+
+    plt.figure()
+    plt.plot(x, y, marker='.', linestyle='none', color='purple')
+    plt.title('User Activity Duration (ECDF)')
+    plt.xlabel('Days between first and last post')
+    plt.ylabel('Proportion of Users')
+    plt.grid(True)
     plt.tight_layout()
-    plt.savefig('avgposts.png')
-    plt.show()
+    outfile = os.path.join(PLOTS_DIR, 'inter_event_ecdf.png')
+    plt.savefig(outfile)
+    plt.close()
+    print(f"DONE -> {outfile}")
 
-@require_script('post_stats.py')
-def plot_number_of_posts():
-    dates, _, daily_posts, _ , _, _, _ = load_post_stats()
-    dp = pd.Series(np.array(daily_posts), index=pd.to_datetime(dates, format='%Y%m%d'))
-    ax = dp.rolling(RW).mean().plot(figsize=(8,3))
-    ax.set_ylabel('daily posts',fontsize=15)
-    plt.yticks(fontsize=13)
-    plt.xticks(fontsize=13)
-    plt.grid(alpha=.2)
-    plt.tight_layout()
-    plt.savefig('dailyposts.png')
-    plt.show()
-
-@require_script('inter_event_time.py')
-def plot_inter_event_time_ecdf():
-    res = []
-    with open('inter-time.txt') as f:
-        while line := f.readline():
-            t, delta = line.strip().split()
-            res.append((int(t), int(delta)))
-    df = pd.DataFrame(res, columns=['date','delta'])
-
-    preopen = df[df.date < 20240206].delta
-    afteropen = df[df.date >= 20240206].delta
-    df['mo'] = df.date.apply(lambda x: str(x)[2:6])
-    df.date = pd.to_datetime(df.date, format='%Y%m%d')
-    plt.ecdf(df.delta, label='all')
-    plt.grid(alpha=.2)
-    plt.ecdf(preopen, label='invite only')
-    plt.ecdf(afteropen, label='free access')
-    plt.ylim(-0.05, 1.05)
-    plt.ylabel('Proportion', fontsize=15)
-
-    plt.xlabel('$\Delta$ days', fontsize=15)
-    plt.yticks(fontsize=13)
-    plt.xticks(fontsize=13)
-    plt.legend(fontsize=15)
-    plt.savefig('delta-days.png')
-    plt.show()
-
-@require_script('instances_dist.py')
-def plot_instances():
-    inst_p = dict()
-    inst_u = dict()
-    with open('instance_posts.csv') as f:
-        for l in f.readlines():
-            inst, freq = l.rstrip().split(',')
-            inst_p[inst] = int(freq)
-    with open('instance_users.csv') as f:
-        for l in f.readlines():
-            inst, freq = l.rstrip().split(',')
-            inst_u[inst] = int(freq)
-    inst = pd.DataFrame([inst_p, inst_u]).T
-    inst.columns = ['posts', 'users']
-
-    print('<100 users', len(inst[inst.users < 100]))
-    inst = inst[inst.users >= 500]
-    print('>=100 users', len(inst))
-
-    plt.scatter(x=inst.posts, y=inst.users, alpha=.5)
-
-    texts = []
-    for idx, row in inst.iterrows():
-        #if row['posts'] >= 100000:
-        t = plt.annotate(idx, (row['posts'], row['users']), fontsize=12)
-        texts.append(t)
-
-    plt.loglog()
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    plt.xlabel('# posts', fontsize=15)
-    plt.ylabel('# users', fontsize=15)
-    adjust_text(texts, arrowstyle='-', color='red')
-    plt.savefig('instances.png', bbox_inches = "tight")
-    plt.show()
-
-@require_script('sentiment_table.py')
-def plot_sentiment():
-
-    df = pd.read_csv('sentiment_table.csv')
-    df.index = pd.to_datetime(df.date.tolist(), format='%Y%m%d')
-    for k in ['positive', 'negative', 'neutral']:
-        df[k] = df[k]/df.total
-    ax = df.positive.rolling(RW).mean().plot(figsize=(8,3))
-    df.negative.rolling(RW).mean().plot()
-    df.neutral.rolling(RW).mean().plot()
-    ax.set_ylabel('ratio',fontsize=15)
-    plt.yticks(fontsize=13)
-
-    xt=[19539., 19570., 19601., 19631., 19662., 19692., 19723., 19754.,
-       19783.]
-    xtl= ['Jul','Aug','Sep','Oct','Nov','Dec','Jan\n2024','Feb','Mar']
-
-    plt.xticks(ticks=xt, labels=xtl, rotation=False, ha='center', fontsize=13)
-    plt.grid(alpha=.2)
-    plt.legend(loc='best', fontsize=12)
-    plt.ylim(0, .5)
-    plt.tight_layout()
-    plt.savefig('sent_ratio.png')
-
-@require_script('to_topics.py')
-@require_script('topic_extraction.py')
 def plot_topics():
-    df = pd.read_csv('topics_info.csv')
-    df.index = df.Name
-    toplot = df[1:6].Count
-    plt.figure(figsize=(10,5))
-    plt.barh(list(reversed(toplot.index)), 
-            list(reversed(toplot)),
-            alpha=.7)
-    plt.yticks(fontsize=13)
-    plt.xticks(fontsize=13)
-    plt.tight_layout()
-    plt.savefig('5topics_dist.png')
-    plt.show()
+    print("5. Generating 'Topics' plot...", end=' ')
+    path = os.path.join(RESULTS_DIR, 'topics_info.csv')
+    if not os.path.exists(path):
+        print("SKIPPED (File missing)")
+        return
 
+    try:
+        df = pd.read_csv(path, encoding='utf-8')
+        df = df[df['Topic'] != -1].head(10)
+        
+        if df.empty: 
+            print("SKIPPED (Empty)")
+            return
+
+        plt.figure()
+        df['Label'] = df.apply(lambda x: f"T{x['Topic']}: {x['Name'][:30]}...", axis=1)
+        sns.barplot(data=df, y='Label', x='Count', color='teal')
+        plt.title('Top 10 Discovered Topics')
+        plt.xlabel('Number of Posts')
+        plt.ylabel('Topic')
+        plt.tight_layout()
+        outfile = os.path.join(PLOTS_DIR, 'topics_bar.png')
+        plt.savefig(outfile)
+        plt.close()
+        print(f"DONE -> {outfile}")
+    except Exception as e:
+        print(f"ERROR: {e}")
+
+def process_feed_data():
+    if not os.path.exists(FEED_DATA_DIR):
+        print(f"   [WARN] Feed folder {FEED_DATA_DIR} not found.")
+        return None, None
+
+    feed_files = glob.glob(os.path.join(FEED_DATA_DIR, "*.jsonl"))
+    if not feed_files:
+        print(f"   [WARN] No .jsonl files in {FEED_DATA_DIR}.")
+        return None, None
+
+    print(f"   (Reading {len(feed_files)} feed files...)", end=' ')
     
+    feed_totals = []
+    feed_daily = []
 
+    for fpath in feed_files:
+        feed_name = os.path.basename(fpath).replace('.jsonl', '')
+        count = 0
+        dates = []
+        try:
+            with open(fpath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        record = json.loads(line)
+                        created_at = record.get('created_at')
+                        if created_at:
+                            dt_str = created_at.split('T')[0]
+                            dates.append(dt_str)
+                        count += 1
+                    except: continue
+        except: continue
+
+        feed_totals.append({'feed': feed_name, 'likes': count})
+        if dates:
+            df_dates = pd.DataFrame({'date': dates})
+            daily_counts = df_dates.groupby('date').size().reset_index(name='likes')
+            daily_counts['feed'] = feed_name
+            feed_daily.append(daily_counts)
+
+    df_totals = pd.DataFrame(feed_totals).sort_values(by='likes', ascending=False)
+    
+    if feed_daily:
+        df_daily = pd.concat(feed_daily, ignore_index=True)
+    else:
+        df_daily = pd.DataFrame()
+
+    return df_totals, df_daily
+
+def plot_feed_stats():
+    print("6. Generating 'Feed Stats' plots...", end=' ')
+    df_totals, df_daily = process_feed_data()
+    
+    if df_totals is None or df_totals.empty:
+        print("SKIPPED (No Feed Data)")
+        return
+
+    # Popularity
+    top_20 = df_totals.head(20)
+    plt.figure(figsize=(12, 8))
+    sns.barplot(data=top_20, y='feed', x='likes', palette='magma')
+    plt.title('Top 20 Feeds by Likes (Sampled)')
+    plt.xlabel('Total Likes')
+    plt.ylabel('Feed Name')
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOTS_DIR, 'feeds_popularity.png'))
+    plt.close()
+
+    # Trend
+    if not df_daily.empty:
+        top_5_names = df_totals.head(5)['feed'].tolist()
+        df_top_daily = df_daily[df_daily['feed'].isin(top_5_names)].copy()
+        df_top_daily['date'] = pd.to_datetime(df_top_daily['date'])
+        df_top_daily = df_top_daily.sort_values('date')
+
+        plt.figure(figsize=(12, 6))
+        sns.lineplot(data=df_top_daily, x='date', y='likes', hue='feed', marker='o')
+        plt.title('Daily Likes Trend (Top 5 Feeds)')
+        plt.xlabel('Date')
+        plt.ylabel('New Likes per Day')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(os.path.join(PLOTS_DIR, 'feeds_trend.png'))
+        plt.close()
+    
+    print("DONE (2 Plots)")
 
 if __name__ == '__main__':
-    print("Hello, World!")
-
-    # REQUIRE RUNNING post_stats.py
-    plot_posts_per_user()
-    plot_number_of_posts()
-
-    # REQUIRES RUNNING inter_event_time.py
-    plot_inter_event_time_ecdf()
-
-    # REQUIRES RUNNING instances_dist.py
-    plot_instances()
-
-    # REQUIRES RUNNING sentiment_table.py 
-    plot_sentiment()
-
-    # REQUIRES RUNNING to_topics.py and topic_extraction.py
-    plot_topics()
     
+    # Print Absolute Path to avoid confusion
+    abs_plots_dir = os.path.abspath(PLOTS_DIR)
+    print("="*60)
+    print(f"BSKY PLOTS GENERATOR")
+    print(f"Output Directory: {abs_plots_dir}")
+    print("="*60)
     
+    setup_plotting()
+    
+    try: plot_daily_activity()
+    except Exception as e: print(f"FAIL: {e}")
+
+    try: plot_languages()
+    except Exception as e: print(f"FAIL: {e}")
+
+    try: plot_sentiment_timeline()
+    except Exception as e: print(f"FAIL: {e}")
+    
+    try: plot_inter_event_time()
+    except Exception as e: print(f"FAIL: {e}")
+    
+    try: plot_topics()
+    except Exception as e: print(f"FAIL: {e}")
+    
+    try: plot_feed_stats()
+    except Exception as e: print(f"FAIL: {e}")
+
+    print("\n" + "="*60)
+    print("FINAL REPORT - Generated Files:")
+    if os.path.exists(PLOTS_DIR):
+        files = os.listdir(PLOTS_DIR)
+        for f in files:
+            print(f" [OK] {f}")
+    print("="*60)

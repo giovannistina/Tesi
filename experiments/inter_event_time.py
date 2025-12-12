@@ -6,84 +6,79 @@ from tqdm import tqdm
 import time
 from datetime import datetime
 
+# --- CONFIGURATION ---
+BASE_DEFAULT = '../cleaning&processing/results/clean'
+OUT_DEFAULT = 'results/inter-time.txt'
+# ---------------------
 
 def gzip_iterator(BASE):
-    for f in sorted(os.listdir(BASE)):
-        f = os.path.join(BASE, f)
-        if f.endswith('.gz'):   
-            print(f'processing {f}...')
-            yield f
-                    
+    if not os.path.exists(BASE): 
+        print(f"Error: Directory {BASE} not found.")
+        return
+    # Sort files numerically
+    files = sorted([f for f in os.listdir(BASE) if f.endswith('.gz')], 
+                   key=lambda x: int(x.split('.')[0]) if x[0].isdigit() else x)
+    for f in files:
+        f_path = os.path.join(BASE, f)
+        print(f'processing {f_path}...')
+        yield f_path
 
 if __name__ == '__main__':
     
     tick = time.time()
-    BASE = 'clean'
-    OUT = 'inter-time.txt'
+    BASE = BASE_DEFAULT
+    OUT = OUT_DEFAULT
 
+    # Command line arguments
     for i in range(len(sys.argv)):
-        if sys.argv[i] == '-b':
-            BASE = sys.argv[i+1]
-        if sys.argv[i] == '-o':
-            OUT = sys.argv[i+1]
+        if sys.argv[i] == '-b': BASE = sys.argv[i+1]
+        if sys.argv[i] == '-o': OUT = sys.argv[i+1]
 
-    print('processing files in', BASE, 'and saving to', OUT)
+    print(f'Processing files in {BASE} -> {OUT}')
     
-    # computes the inter-event time
-    # for each user, we compute the time between the first and the last post (in days)
+    # Dictionary to store min and max date for each user
+    # Structure: {user_id: [min_date, max_date]}
+    user_dates = {}
 
-    current_user = None
-    current_user_first = None
-    current_user_last = None
-    
-    with open(OUT, 'a') as outf:
-        for path in gzip_iterator(BASE):
-            with gzip.open(path) as f:
-                
-                for line in tqdm(f):
+    for path in gzip_iterator(BASE):
+        # WINDOWS FIX: encoding='utf-8' and mode='rt'
+        with gzip.open(path, 'rt', encoding='utf-8') as f:
+            for line in tqdm(f, desc=f"Reading {os.path.basename(path)}"):
+                try:
                     d = json.loads(line.strip())
-                    date = str(d['date'])[:8]
-                    timestamp = datetime.strptime(date, '%Y%m%d').date()
-                    if current_user is None:
-                        # initialize
-                        current_user = d['user_id']
-                        current_user_first = timestamp
-                        current_user_last = timestamp
-                        n_user_posts = 1
-
+                    user_id = d.get('user_id')
                     
-                    elif current_user != d['user_id'] and n_user_posts > 1:
-                        # write the inter-event time for the current user
-                        delta = (current_user_last - current_user_first).days
-                        dt = current_user_first.strftime('%Y%m%d')
-                        outf.write(f'{dt} {delta}\n')
+                    # Parse date YYYYMMDD
+                    date_str = str(d.get('date'))[:8] 
+                    try:
+                        dt = datetime.strptime(date_str, '%Y%m%d').date()
+                    except: continue
 
-                        # then update the current user
-                        current_user = d['user_id']
-                        current_user_first = timestamp
-                        current_user_last = timestamp
-                        n_user_posts = 1
-                    else:
-                        # update the first and last post of the current user
-                        current_user_last = max(current_user_last, timestamp)
-                        current_user_first = min(current_user_first, timestamp)
-                        n_user_posts += 1
+                    if user_id is not None:
+                        if user_id not in user_dates:
+                            user_dates[user_id] = [dt, dt]
+                        else:
+                            # Update min and max
+                            if dt < user_dates[user_id][0]:
+                                user_dates[user_id][0] = dt
+                            if dt > user_dates[user_id][1]:
+                                user_dates[user_id][1] = dt
+                except: continue
 
-                        
+    print("Writing results...")
+    
+    # Create output directory
+    if not os.path.exists(os.path.dirname(OUT)):
+        os.makedirs(os.path.dirname(OUT))
 
+    # Write results: DateOfFirstPost DaysDelta
+    with open(OUT, 'w', encoding='utf-8') as outf:
+        for uid, dates in user_dates.items():
+            delta = (dates[1] - dates[0]).days
+            
+            # Format: YYYYMMDD DELTA
+            dt_str = dates[0].strftime('%Y%m%d')
+            outf.write(f'{dt_str} {delta}\n')
 
-
-
-
-                        
-
-                    
-                    
-
-
-
-
-                    
-                    
     tock = time.time()
-    print('done.', int(tock-tick), 's')
+    print(f'done. {int(tock-tick)} s')
