@@ -1,0 +1,26 @@
+# --- Bluesky Data Collection ---
+atproto                 
+websocket-client        
+cbor2                   
+dag-cbor                
+requests                
+
+# --- Data Processing & Graphs ---
+pandas                  
+numpy                   
+networkx                
+tqdm                    
+
+# --- AI, NLP & Sentiment Analysis ---
+torch                   
+transformers            
+scipy                   
+nltk                    
+scikit-learn            
+bertopic                
+umap-learn              
+hdbscan                
+ 
+# --- Visualization ---
+matplotlib              
+seaborn                 
