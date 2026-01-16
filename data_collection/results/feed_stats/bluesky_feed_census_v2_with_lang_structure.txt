@@ -1,0 +1,58 @@
+=== STRUTTURA DEL FILE CSV ===
+File analizzato: results/feed_stats/bluesky_feed_census_v2_with_lang.csv
+========================================
+
+--- 1. INFO GENERALI (df.info()) ---
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 79059 entries, 0 to 79058
+Data columns (total 10 columns):
+ #   Column             Non-Null Count  Dtype 
+---  ------             --------------  ----- 
+ 0   name               79007 non-null  object
+ 1   description        69748 non-null  object
+ 2   language           79059 non-null  object
+ 3   creation_date      79059 non-null  object
+ 4   feed_likes         79059 non-null  int64 
+ 5   creator_followers  79059 non-null  int64 
+ 6   creator_handle     79059 non-null  object
+ 7   creator_did        79059 non-null  object
+ 8   uri                79059 non-null  object
+ 9   source             79059 non-null  object
+dtypes: int64(2), object(8)
+memory usage: 6.0+ MB
+
+========================================
+
+--- 2. LISTA COLONNE ---
+- name
+- description
+- language
+- creation_date
+- feed_likes
+- creator_followers
+- creator_handle
+- creator_did
+- uri
+- source
+
+========================================
+
+--- 3. TIPI DI DATO (Dtypes) ---
+name                 object
+description          object
+language             object
+creation_date        object
+feed_likes            int64
+creator_followers     int64
+creator_handle       object
+creator_did          object
+uri                  object
+source               object
+========================================
+
+--- 4. ESEMPIO RIGHE DALLA 5 ALLA 8 ---
+                   name                                                                                                                                                                                                                     description language             creation_date  feed_likes  creator_followers            creator_handle                       creator_did                                                                          uri   source
+4              Joshisky                                                                                                                                                                                                                             NaN       cs  2025-01-27T16:54:41.756Z           1               1203  dingusuhum.neocities.org  did:plc:or76cicoc657vdnp2jtdk4yt  at://did:plc:or76cicoc657vdnp2jtdk4yt/app.bsky.feed.generator/aaadl4rdo5hie  Scraped
+5     snargleplax worst                                                                                                                                                                                    posts from snargleplax with the fewest likes       en  2025-03-15T03:50:50.652Z           0               3932   snargleplax.bsky.social  did:plc:hg44mp5v7ovswnkpl3kfcggf  at://did:plc:hg44mp5v7ovswnkpl3kfcggf/app.bsky.feed.generator/aaabckm6tsxq2  Scraped
+6  Art Commissions Open                                                                                                                             If you open commissions, please don't forget to use the #CommissionsOpen tag for everyone to see =)       en  2023-07-28T15:11:52.927Z          48                909     leventart.bsky.social  did:plc:5t4mb3vtvqb42b5de5pcwipf  at://did:plc:5t4mb3vtvqb42b5de5pcwipf/app.bsky.feed.generator/aaajyxnvvmiba  Scraped
+7   #Knowledge exchange  Knowledge exchange/ knowledge transfer/ technology transfer feed - for KE/KT/impact professionals, academic researchers, policymakers and others with interests is putting university research and knowhow to really good use.       en  2024-11-22T17:27:38.765Z           0               2704      markgray.bsky.social  did:plc:uprsagspppd33c6zh6jskalg  at://did:plc:uprsagspppd33c6zh6jskalg/app.bsky.feed.generator/aaafjucycabwi  Scraped

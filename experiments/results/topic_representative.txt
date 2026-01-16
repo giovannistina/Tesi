@@ -1,0 +1,155 @@
+=== QUALITATIVE ANALYSIS: BLUESKY FEEDS (TOP 10 TOPICS) ===
+Report Date: 2026-01-16 16:58
+Each topic shows the 3 most representative feeds (Name and Description).
+============================================================
+
+TOPIC ID: 0
+KEYWORDS: bluestocksapp, spamfiltered, investors, relevant, latest
+SIZE:     1409 feeds
+------------------------------
+  1. FEED NAME: Harmony (ONE)
+     DESCRIPTION: The latest posts about Harmony (ONE). Spam-filtered and relevant for investors.  By @bluestocks.app
+
+  2. FEED NAME: Bitcoin (BTC)
+     DESCRIPTION: The latest posts about Bitcoin (BTC). Spam-filtered and relevant for investors.  By @bluestocks.app
+
+  3. FEED NAME: ON Semiconductor (ON)
+     DESCRIPTION: The latest posts about ON Semiconductor (ON). Spam-filtered and relevant for investors.  By @bluestocks.app
+
+============================================================
+
+TOPIC ID: 1
+KEYWORDS: regex, custom, feed, personal, bookmarks
+SIZE:     1232 feeds
+------------------------------
+  1. FEED NAME: Dolano posts only
+     DESCRIPTION: Feed of only my posts, no reposts or replies
+
+  2. FEED NAME: Only Posts - My Follows
+     DESCRIPTION: A custom "Only Posts" feed of all the people I follow + myself. For my personal use but feel free to browse it too. Goes back 7 days.
+
+  3. FEED NAME: Only Replies
+     DESCRIPTION: Feed that shows all replies from people you follow to anyone (like in the original Following feed). Excludes your own posts and replies to you or made in your own threads. (See also the "Follows & Replies" version.)
+
+============================================================
+
+TOPIC ID: 2
+KEYWORDS: bluestocks, httpsappsapplecomappid6740137234, stocks, features, right
+SIZE:     923 feeds
+------------------------------
+  1. FEED NAME: PROS (PRO)
+     DESCRIPTION: The latest posts about PROS (PRO). Spam-filtered and relevant for investors. For all features check out the Bluestocks app to track stocks right from Bluesky: https://apps.apple.com/app/id6740137234
+
+  2. FEED NAME: Hasbro (HAS)
+     DESCRIPTION: The latest posts about Hasbro (HAS). Spam-filtered and relevant for investors. For all features check out the Bluestocks app to track stocks right from Bluesky: https://apps.apple.com/app/id6740137234
+
+  3. FEED NAME: Watchlist
+     DESCRIPTION: Your personalized feed of posts about stocks in your Bluestocks watchlist  For all features check out the Bluestocks app to track stocks right from Bluesky: https://apps.apple.com/app/id6740137234
+
+============================================================
+
+TOPIC ID: 3
+KEYWORDS: httpstrackgoodfeedsco, tracking, wallpaper, italianfood, ff14
+SIZE:     836 feeds
+------------------------------
+  1. FEED NAME: BonusEruptus 2024 movies
+     DESCRIPTION: Tracking movies watched in 2024
+
+  2. FEED NAME: Pitch Me
+     DESCRIPTION: Tracking "pitch me"
+
+  3. FEED NAME: Joe's album of the day
+     DESCRIPTION: Tracking my album of the day posts
+
+============================================================
+
+TOPIC ID: 4
+KEYWORDS: music, metal, songs, radio, band
+SIZE:     825 feeds
+------------------------------
+  1. FEED NAME: cindersnow Music
+     DESCRIPTION: A feed for my music!
+
+  2. FEED NAME: Music 🎬
+     DESCRIPTION: Music
+
+  3. FEED NAME: Music
+     DESCRIPTION: Music feed
+
+============================================================
+
+TOPIC ID: 5
+KEYWORDS: nsfw, 18, sfw, hairy, art
+SIZE:     509 feeds
+------------------------------
+  1. FEED NAME: CrypticCrows NSFW Art
+     DESCRIPTION: A feed of my NSFW art.
+
+  2. FEED NAME: arbys we've got the meat
+     DESCRIPTION: my nsfw art feed 👍
+
+  3. FEED NAME: Xav's Art, but NSFW
+     DESCRIPTION: NSFW Feed of Xav's Art
+
+============================================================
+
+TOPIC ID: 6
+KEYWORDS: photography, photos, photographers, film, photo
+SIZE:     464 feeds
+------------------------------
+  1. FEED NAME: Foto
+     DESCRIPTION: Photography
+
+  2. FEED NAME: Hobbitpics
+     DESCRIPTION: Feed for my photography
+
+  3. FEED NAME: leaf's photography 
+     DESCRIPTION: Feed with my photography posts.
+
+============================================================
+
+TOPIC ID: 7
+KEYWORDS: likes, last, sorted, hours, liked
+SIZE:     425 feeds
+------------------------------
+  1. FEED NAME: My Bangers
+     DESCRIPTION: My top posts sorted by likes!
+
+  2. FEED NAME: My Bangers
+     DESCRIPTION: My top posts, sorted by likes!
+
+  3. FEED NAME: Popular today
+     DESCRIPTION: Everything in the past 24 hours sorted by Likes
+
+============================================================
+
+TOPIC ID: 8
+KEYWORDS: girls, monster, boobs, verified, porn
+SIZE:     408 feeds
+------------------------------
+  1. FEED NAME: Breeding 🔞
+     DESCRIPTION: Verified adult content creators posting breeding kink content  (to be featured, link in bio to join RealNSFW list, then use any #breeding hashtag)
+
+  2. FEED NAME: Real NSFW ✅
+     DESCRIPTION: HQ for Onlyfans, Fansly, FMTY babes, strippers, & SWers of all kinds💙🤍 Real NSFW content from real people. Focus on Hot Girls & NB Porn, Lewds, & Nudes  Verified creators only! Get approved: babesky.com/request  Includes media tagged with #realNSFW
+
+  3. FEED NAME: Natural Girls
+     DESCRIPTION: Natural girls - may be NSFW/adult/nudity/porn  (Must be on RealGirls list to be featured)
+
+============================================================
+
+TOPIC ID: 9
+KEYWORDS: doodles, sketches, wips, commissioned, finished
+SIZE:     397 feeds
+------------------------------
+  1. FEED NAME: MeisterJ's Art Feed
+     DESCRIPTION: My art, sketches and doodles
+
+  2. FEED NAME: Silly Doodles & Sketches
+     DESCRIPTION: Doodles and sketches, including WIPs!
+
+  3. FEED NAME: Doodles
+     DESCRIPTION: Here are my Doodles! (Sketches, Doodles, WIPS...)
+
+============================================================
+

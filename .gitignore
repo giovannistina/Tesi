@@ -3,3 +3,4 @@ __pycache__/
 *.zip
 session.txt
 *.pyc
+graficox_momentaneo.py
