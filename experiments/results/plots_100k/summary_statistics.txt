@@ -1,5 +1,0 @@
-REPORT COMPLETO
-Data: 2026-01-14 16:37:53
-Totale Feed: 79180
-Gini Index: 0.9486
-Correlazione Follower-Like: 0.3130
