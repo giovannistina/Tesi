@@ -1,0 +1,10 @@
+=== METHODOLOGY LOG: DATA FILTERING ===
+Date of analysis: 2026-01-19 11:18
+
+1. Initial dataset size: 79059 feeds
+2. After Language Filter (English): 44984 feeds (Dropped: 34075)
+3. After Null Description Filter: 41899 feeds (Dropped: 3085)
+4. After Date Filter (> 2022-12-31): 41899 feeds (Dropped: 0)
+
+FINAL DATASET FOR TOPIC MODELING: 41899 feeds
+========================================
