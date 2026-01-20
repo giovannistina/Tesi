@@ -62,7 +62,7 @@ def main():
             followers_map[did] = 0 # O un valore che indichi l'errore, es. -1
 
         # Feedback ogni 50 creator
-        if i % 50 == 0:
+        if i % 500 == 0:
             elapsed = time.time() - start_time
             avg_time = elapsed / i
             remaining_est = avg_time * (total_unique - i) / 60
