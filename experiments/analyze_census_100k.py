@@ -1,4 +1,4 @@
-# .../ experiments / analyze_census_100k.py
+# .../ experiments / 2_analyze_census_100k.py
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,12 +8,14 @@ import os
 import time
 from scipy import stats
 import matplotlib.ticker as ticker
+import re
 
 # ==========================================
 # 1. Configurazione e Funzioni Helper
 # ==========================================
-INPUT_CSV = "../data_collection/results/feed_stats/bluesky_feed_census_v2_with_lang.csv"
-OUTPUT_FOLDER = "results/plots"
+# MODIFICA: Aggiornato nome file input con la versione che include le bio
+INPUT_CSV = "../data_collection/results/feed_stats/bluesky_feed_census_v2_with_lang_and_bios.csv"
+OUTPUT_FOLDER = "results/plots/feed_analysis"
 
 def calculate_gini(array):
     """Calcola Gini index su array numpy."""
@@ -23,16 +25,29 @@ def calculate_gini(array):
     n = array.shape[0]
     return ((np.sum((2 * index - n - 1) * array)) / (n * np.sum(array)))
 
+def remove_emojis(text):
+    """Rimuove emoji mantenendo caratteri standard e accenti."""
+    if pd.isna(text): return "Unknown"
+    return re.sub(r'[^\x00-\xFFFF]', '', str(text)).strip()
+
 def main():
     # --- Check Esistenza File ---
-    if not os.path.exists(INPUT_CSV):
-        print(f"❌ Errore: File {INPUT_CSV} non trovato.")
-        return
+    # Normalizziamo il path per evitare errori su sistemi diversi
+    input_path = os.path.normpath(os.path.join(os.path.dirname(__file__), INPUT_CSV))
+    
+    if not os.path.exists(input_path):
+        print(f"❌ Errore: File non trovato in: {input_path}")
+        # Fallback per debug: prova a cercarlo nella cartella corrente se non lo trova nel path relativo
+        if os.path.exists(os.path.basename(INPUT_CSV)):
+             input_path = os.path.basename(INPUT_CSV)
+             print(f"⚠️ Trovato file nella cartella corrente, uso: {input_path}")
+        else:
+             return
 
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     
-    print("📂 Caricamento dataset...")
-    df = pd.read_csv(INPUT_CSV)
+    print(f"📂 Caricamento dataset: {os.path.basename(input_path)}...")
+    df = pd.read_csv(input_path)
     
     # Metadata iniziali
     original_count = len(df)
@@ -54,15 +69,26 @@ def main():
     invalid_likes_mask = df['feed_likes'] < 0
     removed_invalid = invalid_likes_mask.sum()
     df = df[~invalid_likes_mask]
+
+    # D) Filtro Creatori Eliminati (Deleted/Suspended)
+    # Rimuoviamo righe dove la bio è "N/A (Error or Deleted)"
+    removed_deleted_creators = 0
+    if 'creator_description' in df.columns:
+        # Ci assicuriamo di trattare i NaN come stringhe vuote per evitare errori di confronto
+        deleted_mask = df['creator_description'].fillna("") == "N/A (Error or Deleted)"
+        removed_deleted_creators = deleted_mask.sum()
+        df = df[~deleted_mask]
     
     # Conteggi Finali
     final_count = len(df)
     
     print(f"🧹 Pulizia completata.")
     print(f"   - Rimossi per data (< {cutoff_date}): {removed_by_date}")
-    print(f"   - Rimossi per errori dati: {removed_invalid}")
+    print(f"   - Rimossi per errori dati (Like < 0): {removed_invalid}")
+    print(f"   - Rimossi per creatore eliminato: {removed_deleted_creators}")
     print(f"📊 Analisi su {final_count} feed totali.")
 
+    
     # ==========================================
     # 3. Calcolo Variabili e Statistiche
     # ==========================================
@@ -94,7 +120,7 @@ def main():
     if 'language' in df.columns:
         en_count = len(df[df['language']=='en'])
         percent = (en_count/final_count)*100 if final_count > 0 else 0
-        lang_stats = f"   Feed Inglesi (en):               {en_count} ({percent:.1f}% del campione)\n"
+        lang_stats = f"   Feed Inglesi (en):                {en_count} ({percent:.1f}% del campione)\n"
 
     # Creazione testo report usando f-string multiriga (Molto più leggibile)
     report_content = f"""======================================================
@@ -109,13 +135,13 @@ def main():
    Data Elaborazione:    {time.strftime('%Y-%m-%d %H:%M:%S')}
    Script Generatore:    {os.path.basename(__file__)}
    File Report:          summary_statistics.txt
-   File Sorgente Dati:   {INPUT_CSV}
+   File Sorgente Dati:   {os.path.basename(input_path)}
 
 2. DATA CLEANING & FILTRAGGIO
-   Popolazione Iniziale (Raw):      {original_count} feed scaricati.
-   Criterio di Esclusione:          Feed creati prima del {cutoff_date}.
-   --> Feed Eliminati (Obsoleti):   {removed_by_date}
-   --> Feed Eliminati (Errori):     {removed_invalid}
+   Popolazione Iniziale (Raw):       {original_count} feed scaricati.
+   Criterio di Esclusione:           Feed creati prima del {cutoff_date}.
+   --> Feed Eliminati (Obsoleti):    {removed_by_date}
+   --> Feed Eliminati (Errori):      {removed_invalid}
    -------------------------------------------
    POPOLAZIONE FINALE (ANALIZZATA): {final_count} feed.
 
@@ -235,7 +261,6 @@ def main():
     df['likes_class'] = pd.cut(df['feed_likes'], bins=bins_class, labels=labels_class)
 
     # --- 3a. Grafico a Torta (0 vs 1 vs Altri) ---
-    # NUOVO: Colpo d'occhio immediato sulla "Zero-Inflation"
     print("   > Generazione 3a (Pie Chart: 0 vs 1 vs >1)...")
     plt.figure(figsize=(10, 8))
     
@@ -264,7 +289,6 @@ def main():
     plt.savefig(f"{OUTPUT_FOLDER}/3a_pie_zeros.png", bbox_inches='tight'); plt.close()
 
     # --- 3b. Istogramma Like (Log Scale - X Axis) ---
-    # (Ex 3a)
     print("   > Generazione 3b (Log Scale X)...")
     plt.figure(figsize=(10, 6))
     sns.histplot(df['log_likes'], bins=40, kde=True, color='skyblue')
@@ -275,7 +299,6 @@ def main():
     plt.savefig(f"{OUTPUT_FOLDER}/3b_histogram_likes_log.png"); plt.close()
 
     # --- 3c. Istogramma Like (Linear Zoom 0-100) ---
-    # (Ex 3b)
     print("   > Generazione 3c (Linear Zoom 0-100)...")
     plt.figure(figsize=(12, 6))
     subset_df = df[df['feed_likes'] <= 100]
@@ -287,7 +310,6 @@ def main():
     plt.savefig(f"{OUTPUT_FOLDER}/3c_histogram_likes_zoom_100.png"); plt.close()
 
     # --- 3d. Istogramma Classi (Barplot + Etichette) ---
-    # (Ex 3c)
     print("   > Generazione 3d (Distribuzione per Classi)...")
     plt.figure(figsize=(12, 7))
     class_counts = df['likes_class'].value_counts().sort_index()
@@ -306,7 +328,6 @@ def main():
     plt.savefig(f"{OUTPUT_FOLDER}/3d_histogram_classes.png"); plt.close()
 
     # --- 3e. Ipson Logaritmica (Scala Y Log) ---
-    # (Ex 3d)
     print("   > Generazione 3e (Ipson - Scala Y Log)...")
     plt.figure(figsize=(10, 6))
     sns.histplot(df['log_likes'], bins=40, kde=False, color='lightgreen', edgecolor='black')
@@ -321,7 +342,6 @@ def main():
     plt.savefig(f"{OUTPUT_FOLDER}/3e_histogram_ipson_ylog.png"); plt.close()
 
     # --- 3f. CDF in Log (Survival Function / Power Law Check) ---
-    # (Ex 3e)
     print("   > Generazione 3f (CCDF Log-Log)...")
     plt.figure(figsize=(10, 6))
     
@@ -375,15 +395,6 @@ def main():
     # ################################
     print("📈 5/9 Top Lists (Creators & Feeds)...")
     
-    # Import locale (se non già presente in alto)
-    import re
-
-    def remove_emojis(text):
-        """Rimuove emoji mantenendo caratteri standard e accenti."""
-        if pd.isna(text): return "Unknown"
-        # Rimuove tutto ciò che non è nel Basic Multilingual Plane
-        return re.sub(r'[^\x00-\xFFFF]', '', str(text)).strip()
-
     # --- 5a. Top 20 Creators (Like Totali) ---
     print("   > Generazione 5a (Top 20 Creators)...")
     plt.figure(figsize=(10, 8))
@@ -409,8 +420,6 @@ def main():
     for col in ['name', 'display_name']:
         if col in df.columns:
             name_col = col
-            # display_name è il migliore, se c'è usiamo quello e fermiamo il ciclo (se invertissimo l'ordine lista)
-            # ma qui lasciamo 'display_name' come ultimo check per sovrascrivere 'name'
     
     # 2. Pulizia Nomi
     clean_names = df[name_col].apply(remove_emojis)
@@ -610,18 +619,18 @@ def main():
         for col in ['name', 'display_name']:
             if col in df.columns: name_col = col
 
-        # 3. Selezione Colonne Sicura
-        cols_to_save = [name_col, 'description', 'creation_date', 'creator_handle', 'creator_followers', 'feed_likes', 'days_old']
+        # 3. Selezione Colonne Sicura (MODIFICATO: Include creator_description se presente)
+        cols_to_save = [name_col, 'description', 'creation_date', 'creator_handle', 'creator_followers', 'feed_likes', 'days_old', 'creator_description']
         cols_final = [c for c in cols_to_save if c in viral_new_df.columns]
         
         export_table = viral_new_df[cols_final]
         
         # 4. Rinomina per output leggibile
         rename_map = {
-            name_col: 'Nome Feed', 'description': 'Descrizione',
+            name_col: 'Nome Feed', 'description': 'Descrizione Feed',
             'creation_date': 'Data Creazione', 'creator_handle': 'Handle Creator',
             'creator_followers': 'Follower Creator', 'feed_likes': 'Like Totali',
-            'days_old': 'Giorni Vita'
+            'days_old': 'Giorni Vita', 'creator_description': 'Bio Creator'
         }
         export_table = export_table.rename(columns=rename_map)
         
