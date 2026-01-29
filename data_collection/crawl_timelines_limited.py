@@ -1,6 +1,3 @@
-# Tesi/data_collection/crawl_timelines_limited.py
-
-
 from atproto_client import Client, SessionEvent
 from atproto.exceptions import RequestException, BadRequestError
 from dateutil import parser
@@ -11,6 +8,7 @@ import datetime, time
 import gzip
 import os
 import sys
+import json  # <--- AGGIUNTO: FONDAMENTALE PER _SAVE
 
 # --- CONFIGURAZIONE ---
 USERNAME = os.environ.get('USERNAME')
@@ -84,19 +82,68 @@ def _handle_requests_exceptions(e):
         time.sleep(10)
 
 #### IO
-
 def _save(posts, processed_users, i, file_id, chunk_id):
     os.makedirs(f'data/chunk_{chunk_id}', exist_ok=True)
     
     with gzip.open(f'data/chunk_{chunk_id}/timelines-{file_id}.jsonl.gz', 'a') as f:
         for post in posts:
-            row = f"{post.model_dump_json()}\n"
+            
+            # --- ESTRAZIONE DATI ---
+            rec = post.record # Il contenuto grezzo (testo, data, ecc)
+
+            # 1. GESTIONE EMBED (Dati Gialli)
+            # Salviamo solo il TIPO di allegato (es. 'app.bsky.embed.images'),
+            # ma buttiamo via dimensioni, url delle miniature, ecc.
+            embed_type = None
+            if post.embed:
+                # py_type ci dice se è un'immagine, un link esterno o un record (quote)
+                embed_type = getattr(post.embed, 'py_type', 'unknown')
+
+            # 2. COSTRUZIONE OGGETTO "LITE"
+            post_lite = {
+                # --- Identificativi ---
+                "uri": post.uri,
+                "cid": post.cid,                      # ✅ RICHIESTO: Tieni CID
+                "user": getattr(post, 'user', None),  # Handle (aggiunto dallo script)
+                
+                # --- Autore (Dati Rossi ridotti) ---
+                # ✅ RICHIESTO: Non tenere tutto l'author.
+                # Ma salviamo il DID perché è l'unica chiave primaria sicura per i merge futuri.
+                "author": { 
+                    "did": post.author.did 
+                },
+
+                # --- Contenuto (Senza Facets) ---
+                "record": {
+                    "text": getattr(rec, 'text', ""),
+                    "created_at": getattr(rec, 'created_at', ""),
+                    "langs": getattr(rec, 'langs', []),
+                    "reply": getattr(rec, 'reply', None) # Utile per ricostruire le conversazioni
+                    # ❌ FACETS RIMOSSI
+                },
+
+                # --- Allegati (Solo presenza/tipo) ---
+                "embed_type": embed_type,             # ✅ RICHIESTO: Solo traccia presenza
+
+                # --- Metriche e Moderazione ---
+                "labels": post.labels,                # ✅ RICHIESTO: Tieni Labels
+                "like_count": post.like_count or 0,
+                "repost_count": post.repost_count or 0,
+                "reply_count": post.reply_count or 0
+                
+                # ❌ VIEWER RIMOSSO
+            }
+
+            # Serializzazione JSON
+            # default=str serve per gestire eventuali oggetti data complessi
+            row = f"{json.dumps(post_lite, default=str)}\n"
             f.write(row.encode('utf8'))
 
+    # Salvataggio stato avanzamento
     with open(f'processedT_{chunk_id}.txt', 'a') as f:
         for u in processed_users:
             f.write(f'{u}\t{i}\n')
-
+            
 def _read_list(path):
     if not os.path.exists(path):
         return []
