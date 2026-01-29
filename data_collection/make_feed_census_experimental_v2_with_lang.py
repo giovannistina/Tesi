@@ -103,7 +103,7 @@ def extract_data_from_api(client, url_list):
             feed_info = client.app.bsky.feed.get_feed_generator({'feed': at_uri})
             view = feed_info.view
             
-            # --- NOVITÀ: RILEVAMENTO LINGUA ---
+            # RILEVAMENTO LINGUA 
             feed_name = view.display_name or ""
             feed_description = view.description or "" # Prendiamo la descrizione!
             

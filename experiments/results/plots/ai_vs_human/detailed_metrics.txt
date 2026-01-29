@@ -1,6 +1,6 @@
 ========================================================
 REPORT ANALISI CREATOR: AI vs HUMAN
-Eseguito il: 20/01/2026 alle ore 19:19:59 (Rome Time)
+Eseguito il: 21/01/2026 alle ore 12:48:30 (Rome Time)
 ========================================================
 
 0. RIFERIMENTI METODOLOGICI
@@ -26,29 +26,29 @@ Amateur User             7425          37.17
 Automated Bot            7224          36.17
 Professional/Dev         5325          26.66
 
-3. ANALISI POPOLARITÃ€ (Followers per Creator)
-Nota: La mediana Ã¨ piÃ¹ rappresentativa della media in presenza di outlier.
+3. ANALISI POPOLARITÀ (Followers per Creator)
+Nota: La mediana è più rappresentativa della media in presenza di outlier.
                     N. Utenti  Media Follower  Mediana Follower  Max Follower  Reach Totale
 predicted_category                                                                         
 Amateur User             7425          2052.2             382.0        415471      15237406
 Automated Bot            7224          6475.2             423.5      31456786      46776769
 Professional/Dev         5325          2653.1             480.0        612766      14127817
 
-4. ANALISI PRODUTTIVITÃ€ (Numero di Feed creati per utente)
+4. ANALISI PRODUTTIVITÀ (Numero di Feed creati per utente)
                     Media Feed/Utente  Mediana Feed/Utente  Record Feed (Max)
 predicted_category                                                           
 Amateur User                     1.98                  1.0                225
 Automated Bot                    2.77                  1.0               2547
 Professional/Dev                 1.99                  1.0                239
 
-5. QUALITÃ€ DELLA CLASSIFICAZIONE (Confidence Score)
+5. QUALITÀ DELLA CLASSIFICAZIONE (Confidence Score)
                      mean    min    max
 predicted_category                     
 Amateur User        0.205 -0.038  0.532
 Automated Bot       0.192 -0.032  0.576
 Professional/Dev    0.238 -0.006  0.626
 
-6. CONTROLLO QUALITÃ€ (Casi Ambigui)
+6. CONTROLLO QUALITÀ (Casi Ambigui)
 Soglia di confidenza minima impostata: 0.1
 Utenti sotto soglia (incerti): 1558 su 19974
 Percentuale dati incerti: 7.80%

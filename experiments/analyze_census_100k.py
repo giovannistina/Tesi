@@ -172,7 +172,7 @@ def main():
     # ################################
     # 1. Lorenz Curve (Disuguaglianza)
     # ################################
-    print("📈 1/9 Lorenz Curve...")
+    print("📈 1/10 Lorenz Curve...")
     plt.figure(figsize=(8, 8))
     
     # Calcolo curva
@@ -194,7 +194,7 @@ def main():
     # ################################
     # 2. Analisi Capitale Sociale & Creator Tiers
     # ################################
-    print("📈 2/9 Analisi Capitale Sociale & Creator Tiers...")
+    print("📈 2/10 Analisi Capitale Sociale & Creator Tiers...")
 
     # --- Preparazione Dati (Classi) ---
     # Definiamo le fasce una volta sola
@@ -253,7 +253,7 @@ def main():
     # ################################
     # 3. Analisi Distribuzione Like (Long Tail & Scientific)
     # ################################
-    print("📈 3/9 Analisi Distribuzione Like (Pie, Standard, Scientifici)...")
+    print("📈 3/10 Analisi Distribuzione Like (Pie, Standard, Scientifici)...")
 
     # --- Preparazione Dati (Classi) ---
     bins_class = [-1, 10, 100, 1000, 10000, float('inf')]
@@ -368,7 +368,7 @@ def main():
     # ################################
     # 4. Trend Temporale (Time Series)
     # ################################
-    print("📈 4/9 Trend Temporale...")
+    print("📈 4/10 Trend Temporale...")
     plt.figure(figsize=(12, 6))
     
     # Calcolo frequenze mensili
@@ -393,26 +393,54 @@ def main():
     # ################################
     # 5. TOP LISTS (Creators & Feeds)
     # ################################
-    print("📈 5/9 Top Lists (Creators & Feeds)...")
+    print("📈 5/10 Top Lists (Creators & Feeds)...")
     
     # --- 5a. Top 20 Creators (Like Totali) ---
-    print("   > Generazione 5a (Top 20 Creators)...")
+    print("   > Generazione 5a (Top 20 Creators per Like)...")
     plt.figure(figsize=(10, 8))
     
     # Raggruppa per autore e somma i like di tutti i suoi feed
-    top_creators = df.groupby('creator_handle')['feed_likes'].sum().nlargest(20).reset_index()
+    top_creators_likes = df.groupby('creator_handle')['feed_likes'].sum().nlargest(20).reset_index()
     
-    sns.barplot(x='feed_likes', y='creator_handle', data=top_creators, color='purple')
+    sns.barplot(x='feed_likes', y='creator_handle', data=top_creators_likes, color='purple')
     
     plt.title('5a. Top 20 Creatori per Like Totali accumulati')
     plt.xlabel('Somma dei Like su tutti i loro feed')
     plt.ylabel('Handle Creatore')
     plt.grid(True, alpha=0.3, axis='x')
     plt.tight_layout()
-    plt.savefig(f"{OUTPUT_FOLDER}/5a_top_creators.png"); plt.close()
+    plt.savefig(f"{OUTPUT_FOLDER}/5a_top_creators_likes.png"); plt.close()
 
-    # --- 5b. Top 20 Individual Feeds (Feed Singoli) ---
-    print("   > Generazione 5b (Top 20 Individual Feeds)...")
+    # --- 5b. Top 20 Creators per Numero di Feed (Produttività) ---
+    # (Ex 5c - Portato qui per raggruppare le statistiche per Creator)
+    print("   > Generazione 5b (Top 20 Creators per N. Feed)...")
+    plt.figure(figsize=(10, 10))
+
+    # 1. Calcoliamo sia il conteggio (per ordinare) sia la somma like (per la label)
+    top_producers = df.groupby('creator_handle').agg(
+        num_feeds=('feed_likes', 'count'),
+        total_likes=('feed_likes', 'sum')
+    ).nlargest(20, 'num_feeds').reset_index()
+
+    # 2. Creiamo l'etichetta combinata: @Handle + (Like Totali)
+    top_producers['label'] = top_producers.apply(
+        lambda x: f"@{x['creator_handle']}\n(Like Tot: {int(x['total_likes']):,})", axis=1
+    )
+
+    # 3. Plot (Usiamo Orange per distinguere dalla popolarità)
+    sns.barplot(x='num_feeds', y='label', data=top_producers, color='orange')
+
+    plt.title('5b. Top 20 Creatori per Numero di Feed Creati')
+    plt.xlabel('Numero di Feed Creati')
+    plt.ylabel('')
+    plt.yticks(fontsize=9)
+    plt.grid(True, alpha=0.3, axis='x')
+    plt.tight_layout()
+    plt.savefig(f"{OUTPUT_FOLDER}/5b_top_creators_productivity.png"); plt.close()
+
+    # --- 5c. Top 20 Individual Feeds (Feed Singoli) ---
+    # (Ex 5b - Spostato alla fine della sezione)
+    print("   > Generazione 5c (Top 20 Individual Feeds)...")
     plt.figure(figsize=(10, 10))
     
     # 1. Smart Name Detection (Priorità: Display Name > Name > URI)
@@ -432,19 +460,19 @@ def main():
     top_feeds = df.nlargest(20, 'feed_likes')
     sns.barplot(x='feed_likes', y='plot_label', data=top_feeds, color='purple')
     
-    plt.title('5b. Top 20 Feed Singoli per numero di Like')
+    plt.title('5c. Top 20 Feed Singoli per numero di Like')
     plt.xlabel('Numero di Like')
     plt.ylabel('')
     plt.yticks(fontsize=9)
     plt.grid(True, alpha=0.3, axis='x')
     plt.tight_layout()
-    plt.savefig(f"{OUTPUT_FOLDER}/5b_top_feeds.png"); plt.close()
+    plt.savefig(f"{OUTPUT_FOLDER}/5c_top_feeds.png"); plt.close()
 
 
     # ################################
     # 6. Produttività (Feed per Creatore)
     # ################################
-    print("📈 6/9 Produttività...")
+    print("📈 6/10 Produttività...")
     
     # Conteggio feed per ogni DID univoco
     feeds_per_creator = df['creator_did'].value_counts()
@@ -526,7 +554,7 @@ def main():
     # ################################
     # 7. Distribuzione Lingue
     # ################################
-    print("📈 7/9 Distribuzione Lingue...")
+    print("📈 7/10 Distribuzione Lingue...")
     
     if 'language' not in df.columns:
         print("   ⚠️ Colonna 'language' non trovata. Salto grafico 7.")
@@ -574,10 +602,10 @@ def main():
         plt.tight_layout()
         plt.savefig(f"{OUTPUT_FOLDER}/7_languages.png"); plt.close()
 
-        # ################################
+# ################################
     # 8. Anzianità vs Successo
     # ################################
-    print("📈 8/9 Anzianità vs Successo (Scatter Plots & Table)...")
+    print("📈 8/10 Anzianità vs Successo (Scatter Plots & Table)...")
     
     # --- 8a. Scala Logaritmica (Scatter) ---
     print("   > Generazione 8a (Log Scale)...")
@@ -605,27 +633,32 @@ def main():
     plt.grid(True, alpha=0.3)
     plt.savefig(f"{OUTPUT_FOLDER}/8b_age_vs_success_linear.png"); plt.close()
 
-    # --- 8c. Tabella "Neonati & Virali" (CSV) ---
-    print("   > Generazione 8c (Tabella CSV 'New & Viral')...")
+    # --- 8c. Tabella "Neonati & Virali" (Finestra Fissa) ---
+    print("   > Generazione 8c (Tabella CSV 'New & Viral' - Finestra 09-19 Gennaio)...")
     
-    # 1. Filtri: < 10 giorni E > 100 like
-    mask_recent = df['days_old'] < 10
+    # 1. Definizione Finestra Temporale (9 Gen - 19 Gen)
+    # Dataset scaricato il 19/01, analizziamo gli ultimi 10 giorni esatti
+    end_window = pd.Timestamp("2026-01-19 23:59:59")
+    start_window = pd.Timestamp("2026-01-09 00:00:00")
+    
+    mask_time_window = (df['creation_date'] >= start_window) & (df['creation_date'] <= end_window)
     mask_viral = df['feed_likes'] > 100
-    viral_new_df = df[mask_recent & mask_viral].copy().sort_values(by='feed_likes', ascending=False)
+    
+    viral_new_df = df[mask_time_window & mask_viral].copy().sort_values(by='feed_likes', ascending=False)
     
     if not viral_new_df.empty:
-        # 2. Smart Name Detection (Coerente con Sez. 5)
+        # 2. Smart Name Detection
         name_col = 'uri'
         for col in ['name', 'display_name']:
             if col in df.columns: name_col = col
 
-        # 3. Selezione Colonne Sicura (MODIFICATO: Include creator_description se presente)
+        # 3. Selezione Colonne
         cols_to_save = [name_col, 'description', 'creation_date', 'creator_handle', 'creator_followers', 'feed_likes', 'days_old', 'creator_description']
         cols_final = [c for c in cols_to_save if c in viral_new_df.columns]
         
         export_table = viral_new_df[cols_final]
         
-        # 4. Rinomina per output leggibile
+        # 4. Rinomina
         rename_map = {
             name_col: 'Nome Feed', 'description': 'Descrizione Feed',
             'creation_date': 'Data Creazione', 'creator_handle': 'Handle Creator',
@@ -634,19 +667,19 @@ def main():
         }
         export_table = export_table.rename(columns=rename_map)
         
-        # 5. Salvataggio
-        csv_path = os.path.join(OUTPUT_FOLDER, "8c_tabella_new_viral_feeds.csv")
+        # 5. Salvataggio con nome specifico
+        csv_name = "8c_tabella_new_viral_09Jan_19Jan.csv"
+        csv_path = os.path.join(OUTPUT_FOLDER, csv_name)
         export_table.to_csv(csv_path, index=False)
-        print(f"    ✅ Salvata tabella con {len(export_table)} feed in: {os.path.basename(csv_path)}")
+        print(f"    ✅ Salvata tabella ({len(export_table)} feed) del periodo 9-19 Gennaio in: {csv_name}")
     else:
-        print("    ℹ️ Nessun feed trovato con criteri (<10gg e >100 like). Nessun CSV generato.")
-
+        print("    ℹ️ Nessun feed trovato nel periodo 9-19 Gennaio con >100 like.")
         
         
     # ################################
     # 9. Analisi Viralità e Correlazione
     # ################################
-    print("📈 9/9 Analisi Viralità e Correlazione...")
+    print("📈 9/10 Analisi Viralità e Correlazione...")
     
     # --- 9a. Indice di Viralità (Istogramma) ---
     print("   > Generazione 9a (Istogramma Viralità)...")
@@ -766,6 +799,183 @@ def main():
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"{OUTPUT_FOLDER}/9c_comparison_split.png"); plt.close()
 
+# ################################
+    # 10. ANALISI PORTFOLIO CREATOR (Consistenza & Efficienza)
+    # ################################
+    print("📈 10/10 Analisi Portfolio Creator (Consistenza & Efficienza)...")
+    from matplotlib.colors import LogNorm  # Import locale necessario per la scala colori
+
+    # --- 10.1 Preparazione Dati ---
+    print("   > Aggregazione statistiche per Creator (può richiedere tempo)...")
+    
+    # Filtriamo solo creator con almeno 2 feed per analizzare la consistenza
+    feed_counts = df['creator_did'].value_counts()
+    multi_feed_creators = feed_counts[feed_counts >= 2].index
+    df_multi = df[df['creator_did'].isin(multi_feed_creators)].copy()
+    
+    # Mappatura DID -> Handle (per etichette grafici)
+    did_to_handle = df_multi.groupby('creator_did')['creator_handle'].first()
+
+    # Funzione interna per aggregazione
+    def get_portfolio_stats(x):
+        likes = sorted(x.tolist(), reverse=True)
+        total = sum(likes)
+        top_1 = likes[0]
+        top_2 = likes[1] if len(likes) > 1 else 0
+        
+        # --- FIX IMPORTANTE ---
+        # Se il totale dei like è 0, il Gini darebbe errore (divisione per zero).
+        # Lo impostiamo manualmente a 0.0 per non perdere il creator col dropna()
+        if total == 0:
+            gini = 0.0
+        else:
+            # Usa la funzione calculate_gini definita globalmente
+            gini = calculate_gini(likes)
+        
+        # Flop Rate (Feed con <= 1 like)
+        flops = sum(1 for l in likes if l <= 1)
+        flop_rate = flops / len(likes) if len(likes) > 0 else 0
+        
+        return pd.Series([total, top_1, top_2, gini, flop_rate], 
+                         index=['total_likes', 'top_1_likes', 'top_2_likes', 'gini_index', 'flop_rate'])
+
+    # Calcolo metriche
+    creator_stats = df_multi.groupby('creator_did')['feed_likes'].apply(get_portfolio_stats).unstack()
+    creator_stats['num_feeds'] = feed_counts[creator_stats.index]
+    creator_stats['handle'] = did_to_handle[creator_stats.index]
+    
+    # Ora dropna() rimuoverà solo veri errori, non i creatori con 0 like
+    creator_stats = creator_stats.dropna()
+
+    # Top 5 Produttori per etichette
+    top_5_producers = creator_stats.nlargest(5, 'num_feeds')
+
+    # --- 10a. Istogramma Dominanza (One-Hit Wonder) ---
+    print("   > Generazione 10a (Dominanza)...")
+    plt.figure(figsize=(10, 6))
+    
+    # Calcolo Dominanza
+    # Se total_likes è 0, dominance diventa 0 (grazie a np.where)
+    creator_stats['dominance_ratio'] = np.where(
+        creator_stats['total_likes'] > 0,
+        creator_stats['top_1_likes'] / creator_stats['total_likes'],
+        0
+    )
+    
+    sns.histplot(creator_stats['dominance_ratio'], bins=20, kde=True, color='teal')
+    plt.title('10a. "One-Hit Wonder": Peso del Top Feed sul Totale')
+    plt.xlabel('Indice di Dominanza (Top Feed Likes / Total Likes)')
+    plt.ylabel('Numero di Creator')
+    
+    plt.axvline(x=0.9, color='orange', linestyle='--', label='Dominio Quasi Totale (>90%)')
+    plt.text(0.02, 0.9, "Successo Distribuito\n(o Zero Like Totali)", transform=plt.gca().transAxes, color='green', fontweight='bold')
+    plt.text(0.98, 0.9, "One-Hit Wonder", transform=plt.gca().transAxes, color='orange', ha='right', fontweight='bold')
+    
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig(f"{OUTPUT_FOLDER}/10a_dominance_histogram.png"); plt.close()
+
+    # --- 10b. Top 1 vs Top 2 (3 Colori) ---
+    print("   > Generazione 10b (Top 1 vs Top 2 - Classi)...")
+    plt.figure(figsize=(11, 9))
+    
+    bins = [0, 10, 100, float('inf')]
+    labels = ['Low (2-10)', 'Mid (11-100)', 'High (>100)']
+    creator_stats['prod_group'] = pd.cut(creator_stats['num_feeds'], bins=bins, labels=labels)
+
+    custom_palette = {'Low (2-10)': '#1f77b4', 'Mid (11-100)': '#ff7f0e', 'High (>100)': '#d62728'}
+
+    x_val = np.log10(creator_stats['top_1_likes'] + 1)
+    y_val = np.log10(creator_stats['top_2_likes'] + 1)
+    
+    sns.scatterplot(
+        x=x_val, y=y_val, 
+        hue=creator_stats['prod_group'], 
+        palette=custom_palette,          
+        alpha=0.3, s=40, edgecolor=None
+    )
+    
+    max_val = max(x_val.max(), y_val.max())
+    plt.plot([0, max_val], [0, max_val], color='black', ls='--', label='Equilibrio Perfetto')
+    
+    plt.title('10b. Top 1 vs Top 2 Likes (Categorie Produttività)')
+    plt.xlabel('Top 1 Likes (Log10)')
+    plt.ylabel('Top 2 Likes (Log10)')
+    plt.legend(title="Fascia Produttività", loc='upper left')
+    plt.grid(True, alpha=0.3)
+    plt.savefig(f"{OUTPUT_FOLDER}/10b_top1_vs_top2.png"); plt.close()
+
+    # --- 10c. Produttività vs GINI (Lowess + Labels) ---
+    print("   > Generazione 10c (Produttività vs Gini)...")
+    plt.figure(figsize=(12, 8))
+    
+    sns.scatterplot(
+        x=creator_stats['num_feeds'], y=creator_stats['gini_index'], 
+        alpha=0.3, color='crimson', s=25, edgecolor=None
+    )
+    
+    sns.regplot(
+        x=creator_stats['num_feeds'], y=creator_stats['gini_index'], 
+        scatter=False, lowess=True, color='black', 
+        line_kws={'linewidth': 2.5, 'linestyle': '-'}, label='Trend Locale (Lowess)'
+    )
+    
+    for did, row in top_5_producers.iterrows():
+        plt.text(
+            x=row['num_feeds'], y=row['gini_index'] - 0.04, 
+            s=f"@{row['handle']}", color='black', fontsize=9, fontweight='bold',
+            ha='center', va='top', bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1)
+        )
+
+    plt.xscale('log')
+    plt.title('10c. Produttività vs Disuguaglianza Interna (Gini)')
+    plt.xlabel('Numero di Feed Creati (Scala Log)')
+    plt.ylabel('Gini Index (0=Equilibrato, 1=Sbilanciato)')
+    plt.ylim(-0.05, 1.05)
+    
+    plt.axhline(y=0.8, color='orange', linestyle=':', alpha=0.5)
+    plt.text(creator_stats['num_feeds'].min(), 0.82, "ZONA DISUGUAGLIANZA ALTA", color='orange', fontsize=9, fontweight='bold')
+    
+    plt.legend()
+    plt.grid(True, alpha=0.3, which="both")
+    plt.savefig(f"{OUTPUT_FOLDER}/10c_productivity_vs_gini.png"); plt.close()
+
+    # --- 10d. Produttività vs Flop Rate (Lowess + Labels) ---
+    print("   > Generazione 10d (Produttività vs Flop Rate)...")
+    plt.figure(figsize=(12, 8))
+    
+    sns.scatterplot(
+        x=creator_stats['num_feeds'], y=creator_stats['flop_rate'], 
+        alpha=0.3, color='gray', s=25, edgecolor=None
+    )
+    
+    sns.regplot(
+        x=creator_stats['num_feeds'], y=creator_stats['flop_rate'], 
+        scatter=False, lowess=True, color='red', 
+        line_kws={'linewidth': 2.5}, label='Trend Locale (Lowess)'
+    )
+
+    for did, row in top_5_producers.iterrows():
+        plt.text(
+            x=row['num_feeds'], y=row['flop_rate'] - 0.04, 
+            s=f"@{row['handle']}", color='black', fontsize=9, fontweight='bold',
+            ha='center', va='top', bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1)
+        )
+    
+    plt.xscale('log')
+    plt.title('10d. Efficienza: Percentuale di Feed "Morti" (0-1 Like)')
+    plt.xlabel('Numero di Feed Creati (Scala Log)')
+    plt.ylabel('Flop Rate (% Feed con ≤ 1 Like)')
+    plt.ylim(-0.05, 1.05)
+    
+    plt.text(creator_stats['num_feeds'].max(), 0.95, "SPAMMER", ha='right', color='red', fontweight='bold')
+    plt.text(creator_stats['num_feeds'].max(), 0.05, "QUALITY CREATOR", ha='right', color='green', fontweight='bold')
+    
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig(f"{OUTPUT_FOLDER}/10d_productivity_vs_flop.png"); plt.close()
+
+    
     print(f"\n✅ FINITO! Tutti i grafici salvati in: {os.path.abspath(OUTPUT_FOLDER)}")
 
 if __name__ == "__main__":

@@ -1,0 +1,63 @@
+============================================================
+📊 REPORT STATISTICHE COMPLETO
+============================================================
+
+DATI GENERALI
+- Utenti unici analizzati:     3830
+- Post totali analizzati:      594048
+
+FINESTRA TEMPORALE
+- Inizio:   2025-12-29 11:52:54.930000+00:00
+- Fine:     2026-01-28 20:59:12.446000+11:00
+- Durata:   29 giorni
+
+ANALISI LIMITE CRAWLER (530 Post)
+- Utenti con esattamente 530 post:  484 (12.64%)
+
+ANALISI SUPER-UTENTI (Soglia Grafico 1200)
+- Utenti con >=1200 post:            0
+
+ANALISI OUTLIERS (Attività anomala)
+(Metodo: Tukey Boxplot, Q3 + 1.5*IQR)
+- Soglia 'Normale' (Upper Bound):  560.12 post
+- Utenti Outliers (> soglia):      0 (0.00%)
+
+FREQUENZA PUBBLICAZIONE
+- Min/Max post per utente:     1 / 530
+- Media post per utente:       155.10
+- Mediana post per utente:     69.0
+
+METRICHE ENGAGEMENT (Per singolo post)
+Metrica         Min      Max        Media     
+---------------------------------------------
+❤️ Likes        0        86970      1659.85   
+💬 Commenti      0        6189       60.73     
+🔁 Repost        0        22809      512.44    
+
+METRICHE UTENTE (Followers)
+(Dati basati su 3637 utenti uniti)
+- Min Followers:          0
+- Max Followers:          740536
+- Media Followers:        2694.62
+
+  [LEGENDA RATIO (Followers / Following)]
+  * Influencer (>10):   Broadcaster, VIP, Account virali.
+  * Normali (0.5-10):   Utenti 'social' con relazioni reciproche.
+  * Lurker (<0.5):      Osservatori passivi o Bot (seguono molti, seguiti da pochi).
+
+- Influencer (>10 ratio): 209
+- Normali (0.5-10 ratio): 2880
+- Lurker (<0.5 ratio):    548
+
+LINGUA (Inglese)
+- % Utenti prevalentemente EN: 77.68%
+- % Totale Post in EN:         74.78%
+
+🏆 TOP 5 UTENTI PIÙ ATTIVI
+#   HANDLE                                              POST
+------------------------------------------------------------
+1   sifill.bsky.social                                   530
+2   shigeboh.bsky.social                                 530
+3   jonathancohn.bsky.social                             530
+4   markwars.bsky.social                                 530
+5   styathomedogmom.bsky.social                          530

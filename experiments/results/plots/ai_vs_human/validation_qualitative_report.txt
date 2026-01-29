@@ -1,0 +1,371 @@
+====================================================================
+      REPORT DI VALIDAZIONE QUALITATIVA (SANITY CHECK)
+====================================================================
+
+Obiettivo: Verificare la coerenza semantica tra la bio e la categoria assegnata.
+Legenda: [Conf] = Punteggio di confidenza (similarità coseno).
+
+
+######################################################################
+ CATEGORIA: AUTOMATED BOT
+ Frase Prototipo usata: "This is an automated bot account posting updates via script, feed generator or algorithm."
+######################################################################
+
+   A. GLI ARCHETIPI (Top 5 Confidence)
+   Questi sono i profili che l'IA considera 'perfetti' per la categoria.
+   ------------------------------------------------------------
+   * [Conf: 0.576]
+     Bio:
+	> Automated by @d-t-39810.bsky.social
+	> 
+	> A bot that posts Band-Maid trivia.
+	> 
+	> My other bots:
+	> @bandmaidsongbot.bsky.social
+	> @bandmaidsetlistbot.bsky.social
+	> @f1birthdaybot.bsky.social
+	> 
+	> Links :
+	> https://bit.ly/m/Band-Maid-OTD-Bot
+     ........................................
+   * [Conf: 0.574]
+     Bio:
+	> No. This is not a bot account. I am just a silly nerd ok?
+	> 
+	> I post/re-post tech rant/pizza/nonsense content and sometimes NSFW stuff
+	> 
+	> 22 Pansexual Agenderflux
+	> 
+	> Certified furry trash, Miata gan, professional software bug creator
+     ........................................
+   * [Conf: 0.556]
+     Bio:
+	> We build bots that find leads, write emails, and never forget to follow up.
+	> This account? The AI’s shitposting break between sales calls.
+     ........................................
+   * [Conf: 0.535]
+     Bio:
+	> This is a generic service account meant to hold the feeds created by @bryanrva.dev
+	> 
+	> I only follow people who have been added to a starter pack or told me to go fuck myself when I tried to add them to a starter pack so I can keep track.
+     ........................................
+   * [Conf: 0.526]
+     Bio:
+	> used for skyfeed API access, testing and some service messages.
+	> DO NOT FOLLOW THIS ACCOUNT
+	> Instead follow @skyfeed.app and @skyfeed.xyz
+     ........................................
+
+   B. I CASI LIMITE (Bottom 5 Confidence)
+   Profili con punteggio basso (ma scelti comunque). Cerca qui errori o ambiguità.
+   ------------------------------------------------------------
+   * [Conf: -0.032]
+     Bio:
+	> Worcestershire based birder and odonata-er.
+     ........................................
+   * [Conf: -0.021]
+     Bio:
+	> Sorciere/Apparition
+	> 
+	> 一旦の下地　誰でもなく緩慢に遊び寛ぐ私で
+     ........................................
+   * [Conf: -0.014]
+     Bio:
+	> Watch #HSEverglow 's 3D concert on official Holostars English Youtube channel:
+	> https://www.youtube.com/live/WWOmxhmp_Ck
+     ........................................
+   * [Conf: -0.004]
+     Bio:
+	> "A chimera bombinating in a vacuum is, nowadays, only too capable of producing secondary causes." -- Rudyard Kipling, 1905
+     ........................................
+   * [Conf: -0.003]
+     Bio:
+	> electric signs & neon installations
+     ........................................
+
+   C. CAMPIONE CASUALE (Random 5)
+   Controllo imparziale della qualità media.
+   ------------------------------------------------------------
+   * [Conf: 0.154]
+     Bio:
+	> Pro-Democracy 🌊 | Windmill cancer survivor 💨 | Jewish space laser engineer 🛰️ | Antifa summer intern 🧑‍💼 | Banned book editor 📚 |  "Vermin" 🐀 | "NPC"🧍‍♂️
+     ........................................
+   * [Conf: 0.188]
+     Bio:
+	> Sciety is the home of preprint peer review and curation, providing transparency and recognition for peer evaluation of research.
+	> 
+	> Visit https://sciety.org
+	> 
+	> Find us on https://infrafinder.investinopen.org/solutions/sciety 
+	> 
+     ........................................
+   * [Conf: 0.262]
+     Bio:
+	> Developer, working on content-addressed storage/routing networks (https://sfive.net), custom feeds for Bluesky (@skyfeed.app) and other cool open-source stuff!
+	> 
+	> Matrix: @red:y4y.me
+	> Email: red@skyfeed.dev
+     ........................................
+   * [Conf: 0.233]
+     Bio:
+	> https://lit.link/mio14s ▫️DO NOT reupload or AI learn my posts.
+     ........................................
+   * [Conf: 0.081]
+     Bio:
+	> Myra/Doll | Thembo | Brahms Heelshire Simp
+	> 🔪 Slashers & Monsters 
+	> 🔪 Artist & Slasher Fanfic Writer 
+	> 🔪 monsterblush.carrd.co
+     ........................................
+
+
+
+######################################################################
+ CATEGORIA: PROFESSIONAL/DEV
+ Frase Prototipo usata: "I am a software engineer, developer, official organization, news outlet or project maintainer."
+######################################################################
+
+   A. GLI ARCHETIPI (Top 5 Confidence)
+   Questi sono i profili che l'IA considera 'perfetti' per la categoria.
+   ------------------------------------------------------------
+   * [Conf: 0.626]
+     Bio:
+	> I like many things. I work as a data engineer
+     ........................................
+   * [Conf: 0.595]
+     Bio:
+	> I work as artist and researcher. Jobs for museums of contemporary art. 
+     ........................................
+   * [Conf: 0.590]
+     Bio:
+	> Ecologist (professionally retired), active forest restorationist and steward, friend of toads, oak guy.
+	> 
+	> I try to promote a healthy planet for all life.  
+	> 
+	> I am based in north-central United States (southern Michigan).
+     ........................................
+   * [Conf: 0.586]
+     Bio:
+	> 🧶 📚 🧼 🧬 💻  ΒΦΜ
+	> I engineer software. I am a librarian, (and teach them, too). I studied DNA and genetics for a bit. I'm a textile artist and serial hobbyist. That's enough for now.
+     ........................................
+   * [Conf: 0.585]
+     Bio:
+	> Long time software engineer and amateur web designer.
+	> 
+	> Move fast, break things.
+	> 
+	> Cultivating the internet @internetstudio.bsky.social
+	> 
+	> My site: caidan.dev
+	> My gallery: grain.social/profile/caidan.dev
+     ........................................
+
+   B. I CASI LIMITE (Bottom 5 Confidence)
+   Profili con punteggio basso (ma scelti comunque). Cerca qui errori o ambiguità.
+   ------------------------------------------------------------
+   * [Conf: -0.006]
+     Bio:
+	> World's salvation lies strictly on USA's extinction.
+	> Problematic content
+	> 
+	> Gay/Atheist, father of comp...
+	> It's all Zoroaster's fault
+	> 
+	> 🍉🔻
+	> FUCK US/ GERMANY/ ISRAEL
+	> Every hate against the Nazi US is well deserved
+	> Orbiting ☭
+	> 
+	> IS TRUMP ALREADY DEAD?
+     ........................................
+   * [Conf: -0.005]
+     Bio:
+	> Aro/Ace/They
+	> NO HATE , NO WAR.
+     ........................................
+   * [Conf: 0.006]
+     Bio:
+	> 인간이 사용하기 위한 픽셀과 코드를 깎습니다.
+	> plantshower.xyz 와 lionsgrass.kr 을 만들었습니다.
+	> 
+	> 반려식물🌱 : plantshower.xyz/hyerim
+	> 독서기록 : https://lionsgrass.kr/@hyerim
+     ........................................
+   * [Conf: 0.006]
+     Bio:
+	> 東北で学び関東に暮らす京都好きの道産子
+	> | Coffee | Frappuccino | Chocolate | French fries |
+     ........................................
+   * [Conf: 0.008]
+     Bio:
+	> 腐絵もあるので自衛お願いします。18⬆︎🌏️。→オクバデ、ラ。AOT→eruri🪽　kmt→muzan
+	> ⚠️AI学習禁止⚠️無断転載禁止/Reproduction and secondary use prohibited.
+	> プロフ　https://profcard.info/u/JSzAciMAOZST1MsU4rvE9e9bbJJ3
+     ........................................
+
+   C. CAMPIONE CASUALE (Random 5)
+   Controllo imparziale della qualità media.
+   ------------------------------------------------------------
+   * [Conf: 0.326]
+     Bio:
+	> he/him • 33
+	> Video Editor • Actor • Gamer
+	> I do comedy in NYC and watch a lot of movies and TV. BlackJohnRoss on other socials. Passively trying to grow my twitch. Actively trying to get more into DnD.
+	> 
+	> http://offqcomedy.com
+	> https://johnathanross.com
+     ........................................
+   * [Conf: 0.293]
+     Bio:
+	> Learning Scientist. Maker and designer. Player of games and toys. Dad. Associate Professor @ Teachers College, Columbia University. Pop & Play host http://tc.edu/popandplay
+     ........................................
+   * [Conf: 0.175]
+     Bio:
+	> 
+	> Assistant Professor, Stanford University // Preventive cardiologist for adults & children // https://clarkelab.stanford.edu 🧬🫀💻
+     ........................................
+   * [Conf: 0.195]
+     Bio:
+	> Trying to do good in a cruel world.
+	> Mostly retired writer, filmmaker, graphic artist, animal activist, dog+elephant lover, active investor, 
+	> play djembe+mbira
+	> LOVE live mx esp dead+jam bands+African
+	> #Herb aficionado
+	> #PSAWLD
+	> #LGBTQ+#BLM ally
+	> #SaveOurWildlfe
+     ........................................
+   * [Conf: 0.284]
+     Bio:
+	> Deep-sea ecologist investigating how humans shape and reshape the sea floor. Conservation technologist developing open-source tools to understand our changing oceans. Ocean educator creating novel programs to help students interact with marine ecosystems. 
+     ........................................
+
+
+
+######################################################################
+ CATEGORIA: AMATEUR USER
+ Frase Prototipo usata: "I am a private person sharing my personal interests, hobbies, life, thoughts and opinions."
+######################################################################
+
+   A. GLI ARCHETIPI (Top 5 Confidence)
+   Questi sono i profili che l'IA considera 'perfetti' per la categoria.
+   ------------------------------------------------------------
+   * [Conf: 0.532]
+     Bio:
+	> Hello, I’m Gabriel. I’m 19 (29) years old. I like people, places and things.
+	> 
+	> Sometimes I share nsfw posts 
+	> 
+	> https://anilist.co/user/bradamante/
+	> 
+	> pfp by: @yaswinart.com.br
+     ........................................
+   * [Conf: 0.527]
+     Bio:
+	> Sharing some of my photos and ideas.
+     ........................................
+   * [Conf: 0.517]
+     Bio:
+	> I read a lot of books. I have weird friends. I have a ton of different interests. I read even more books. I'm a full-time librarian at a library on an Air Force base. I cross stitch. I sometimes forget I have social media profiles. I have two cats.
+     ........................................
+   * [Conf: 0.509]
+     Bio:
+	> My journey of personal growth involves engaging in meaningful interactions with others and sharing my experiences. #Day1Adventures
+     ........................................
+   * [Conf: 0.496]
+     Bio:
+	> Regularly sharing nudes of myself, playing with my toys. 
+	> Age is just a number. Interested in people of all ages (but 18+).
+	> 
+	> #bttm #bi #gay #dutch #dutchgay
+     ........................................
+
+   B. I CASI LIMITE (Bottom 5 Confidence)
+   Profili con punteggio basso (ma scelti comunque). Cerca qui errori o ambiguità.
+   ------------------------------------------------------------
+   * [Conf: -0.038]
+     Bio:
+	> Birding, scarcely in Gloucestershire, rarely elsewhere.
+     ........................................
+   * [Conf: -0.032]
+     Bio:
+	> Good morning, America 
+	> Welcome to fascism 
+	> We didn’t listen to Black Women.
+	> Hope the cheaper eggs 
+	> and gas was worth it
+	> Fuck Christian Nationalism
+	> Fuck Trvmpism
+	> #Voteblue
+	> Always #Resist 
+	> 🔥🚬🙂‍↔️😮💨😊🥃
+	> 
+	> https://www.tiktok.com/@skeptical2476?_t=8rfue8JJ1Eg&_r=1
+     ........................................
+   * [Conf: -0.026]
+     Bio:
+	> broken down wreck with dead eyes...
+     ........................................
+   * [Conf: -0.026]
+     Bio:
+	> "A king should never sit easy"
+	> 
+	> Mainly following #asoiaf and ck3
+     ........................................
+   * [Conf: -0.025]
+     Bio:
+	>  ✦ . 　⁺ 　 . ✦ . 　⁺ 　 . ✦  . 　⁺ 　 . ✦ . 　⁺ 　 . ✦
+	> 
+	> I like girlz ♡ they/he/rot #freepalestine 
+	> 🎀 selfcestyuri.straw.page 🥩
+	> 
+	>  ✦ . 　⁺ 　 . ✦ . 　⁺ 　 . ✦  . 　⁺ 　 . ✦ . 　⁺ 　 . ✦
+     ........................................
+
+   C. CAMPIONE CASUALE (Random 5)
+   Controllo imparziale della qualità media.
+   ------------------------------------------------------------
+   * [Conf: 0.246]
+     Bio:
+	> ✈️ FMTY FSSSW & High-Class Companion ✈️
+	> ✨ Camkitten, Content Creator, Cosplayer, & Fetish Model ✨
+	> 🤡 Certified Silly Goose 🤡
+	> 🧚/🧜‍♀️/🌑/🌌/ they
+	> 
+	> 🚫 GEN AI 🔞 MDNI 🔞
+	> 
+	> 🎀: @sfwsaturniibae.bsky.social
+	> ⛓️: @paysaturniibae.bsky.social
+	> 
+	> 💌 Beacons.ai/saturniibae 💌
+     ........................................
+   * [Conf: 0.184]
+     Bio:
+	> “Capable of action; prone to inertia” Caregiver to my 2 besties, Nandi & Nkosi.  Lover of funny sh*t & creativity of all sorts.
+     ........................................
+   * [Conf: 0.306]
+     Bio:
+	> Just a girl whose been writing anime fanfics since 2005
+	> I create my own crackships, rarepairs, OC's & BL | DL;DR | wyntr.carrd.co
+	> 
+	> BKDK/DKBK ☆ KuroFai ☆ Evaikka
+	> 
+	> 30+ | Sometimes family-friendly, often nsfw
+     ........................................
+   * [Conf: 0.186]
+     Bio:
+	> in tokyo. I love the sky, blue sky. Playing FFXIV, sky child of light, azurlane.
+	> 
+	> エンジニアリングで生計立ててる人。FF14でヒカセン業もしてます。星の子供にもなります。よく聞く歌手は倉木麻衣等。
+     ........................................
+   * [Conf: 0.223]
+     Bio:
+	> Hi i'm Rowan. 23, he/her. I post slenderverse things here :]
+	> 
+	> AO3 is ramgirlshaun
+	> Art tag is #rowart
+	> Icon by ratgnaw
+     ........................................
+
+

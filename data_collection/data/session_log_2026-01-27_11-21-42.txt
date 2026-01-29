@@ -1,0 +1,11 @@
+--- SESSIONE DI RACCOLTA DATI ---
+DATA AVVIO: 2026-01-27_11-21-42
+IMPOSTAZIONI:
+- Durata Raccolta (Lavoro): 1 minuti
+- Durata Pausa (Sleep):     2 minuti
+- Copertura Totale Target:  0.05 ore
+-----------------------------------
+[2026-01-27 11:21:42] Inizio ciclo operativo globale.
+[2026-01-27 11:21:42] CICLO 1: Avvio raccolta dati (1 min)...
+[2026-01-27 11:21:42] ERRORE CRITICO nel ciclo 1: Lo script di raccolta è fallito. Command '['/opt/conda/bin/python', 'ricerca_real_time.py', '1']' returned non-zero exit status 1.
+[2026-01-27 11:21:42] CICLO 1: Inizio PAUSA di 2 min. Prossimo avvio: 11:23:42

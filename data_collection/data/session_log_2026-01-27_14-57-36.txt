@@ -1,0 +1,16 @@
+--- SESSIONE DI RACCOLTA DATI ---
+DATA AVVIO: 2026-01-27_14-57-36
+IMPOSTAZIONI:
+- Durata Raccolta: 0.2 min
+- Durata Pausa:    10 min
+- Target Totale:   0.05 ore
+-----------------------------------
+[2026-01-27 14:57:36] START: Utenti già presenti nel DB: 0
+[2026-01-27 14:57:36] CICLO 1: Avvio raccolta (0.2 min)...
+[2026-01-27 14:57:54] CICLO 1: Terminato. Nuovi utenti: +4195 | Totale DB: 4195
+[2026-01-27 14:57:54] Tempo totale esaurito. Stop sequenza.
+[2026-01-27 14:57:54] --- RIEPILOGO SESSIONE ---
+Utenti inizio sessione: 0
+Utenti fine sessione:   4195
+Totale raccolti oggi:   +4195
+--- FINE PROGRAMMA ---

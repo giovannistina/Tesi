@@ -1,0 +1,103 @@
+DOCUMENTAZIONE STRUTTURA DATI BLUESKY
+Generato da file: timelines-50000.jsonl.gz
+============================================================
+
+📂 author
+    🔹 did  --> 🆔 ID univoco e immutabile dell'utente (usare questo per le analisi).
+    🔹 handle  --> 👤 Nome utente leggibile (es. nome.bsky.social).
+    📂 associated
+        📂 activity_subscription
+            🔹 allow_subscriptions
+            🔹 py_type
+        📂 chat
+            🔹 allow_incoming
+            🔹 py_type
+        🔹 feedgens
+        🔹 labeler
+        🔹 lists
+        🔹 starter_packs
+        🔹 py_type
+    🔹 avatar
+    🔹 created_at  --> 📅 Data e ora di creazione (formato ISO 8601 UTC).
+    🔹 debug
+    🔹 display_name  --> Il nome visualizzato sul profilo (può contenere emoji/spazi).
+    📂 labels
+    🔹 pronouns
+    🔹 status
+    🔹 verification
+    📂 viewer
+        🔹 activity_subscription
+        🔹 blocked_by
+        🔹 blocking
+        🔹 blocking_by_list
+        🔹 followed_by
+        🔹 following
+        🔹 known_followers
+        🔹 muted
+        🔹 muted_by_list
+        🔹 py_type
+    🔹 py_type
+🔹 cid  --> Hash del contenuto (firma digitale del post).
+🔹 indexed_at
+📂 record  --> 📦 Il contenitore dei dati grezzi creati dall'utente.
+    🔹 created_at  --> 📅 Data e ora di creazione (formato ISO 8601 UTC).
+    🔹 text  --> 📝 Il testo effettivo del post.
+    📂 embed  --> Contenuto multimediale (Immagini, Link esterni, Video).
+        📂 external
+            🔹 description
+            🔹 title
+            🔹 uri  --> Identificativo tecnico del post nel network (at://...).
+            📂 thumb
+                🔹 mime_type
+                🔹 size
+                📂 ref
+                    🔹 link
+                🔹 py_type
+            🔹 py_type
+        🔹 py_type
+    🔹 entities
+    📂 facets  --> Metadati nel testo: posizioni di link, menzioni e hashtag.
+        [Lista di 4 elementi. Mostro struttura del primo]
+        📂 features
+            [Lista di 1 elementi. Mostro struttura del primo]
+            🔹 tag
+            🔹 py_type
+        📂 index
+            🔹 byte_end
+            🔹 byte_start
+            🔹 py_type
+        🔹 py_type
+    🔹 labels
+    📂 langs  --> Lingua rilevata del post (es. ['en'], ['it']).
+        [Lista di 1 elementi. Mostro struttura del primo]
+    🔹 reply  --> Se presente, indica che questo post è una risposta.
+    🔹 tags
+    🔹 py_type
+🔹 uri  --> Identificativo tecnico del post nel network (at://...).
+🔹 bookmark_count
+🔹 debug
+📂 embed  --> Contenuto multimediale (Immagini, Link esterni, Video).
+    📂 external
+        🔹 description
+        🔹 title
+        🔹 uri  --> Identificativo tecnico del post nel network (at://...).
+        🔹 thumb
+        🔹 py_type
+    🔹 py_type
+📂 labels
+🔹 like_count  --> ❤️ Numero totale di Mi Piace.
+🔹 quote_count  --> ❝ Numero di citazioni (Quote posts).
+🔹 reply_count  --> 💬 Numero di risposte ricevute.
+🔹 repost_count  --> 🔁 Numero totale di Repost.
+🔹 threadgate
+📂 viewer
+    🔹 bookmarked
+    🔹 embedding_disabled
+    🔹 like
+    🔹 pinned
+    🔹 reply_disabled
+    🔹 repost
+    🔹 thread_muted
+    🔹 py_type
+🔹 py_type
+🔹 user

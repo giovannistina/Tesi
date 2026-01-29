@@ -1,8 +1,9 @@
+# # Tesi/data_collection/original_code/crawl_timelines_old.py
+
 #Questo file è stato modificato per prendere le attività solamente degli ultimi 30 giorni. 
 #Per il codice originale andare sul sito e riscaricare lo script
  
-# This file has been modified to capture activity only from the last 30 days.
-# It also includes a final timer to estimate performance.
+
 
 from atproto_client import Client, SessionEvent
 from atproto.exceptions import RequestException, BadRequestError
