@@ -1,147 +1,105 @@
 # Tesi/data_collection/orchestrator.py
 
+
 import subprocess
 import time
 import sys
 import datetime
 import os
 
-# --- CONFIGURAZIONE CICLI ---
-MINUTI_LAVORO = 0.2       # Quanto dura la raccolta
-MINUTI_PAUSA = 10        # Quanto aspetta tra una raccolta e l'altra
-DURATA_TOTALE_ORE = 0.05 # Copertura totale in ore
-DATA_FOLDER = "data"    # Cartella di output
-DB_FILE = "1.txt"       # Nome del file database principale
+# --- CONFIGURAZIONE ORARI ---
+DURATA_ACQUISIZIONE = 20  # Minuti di lavoro per ogni sessione
+
+# Mappa: ORA -> NOME FILE
+# (Chiave: Ora del giorno 0-23, Valore: Nome del file output)
+SCHEDULE = {
+    0:  "1.txt",
+    6:  "2.txt",
+    12: "3.txt",
+    18: "4.txt"
+}
+
+DATA_FOLDER = "data"
 # ----------------------------
 
-def get_db_count(folder, filename):
-    """Conta le righe di utenti nel file storico, ignorando i commenti."""
-    path = os.path.join(folder, filename)
-    if not os.path.exists(path):
-        return 0
+def get_next_schedule():
+    """Calcola la prossima esecuzione programmata."""
+    now = datetime.datetime.now()
+    target_hours = sorted(SCHEDULE.keys())
     
-    count = 0
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                # Conta solo se c'è testo e NON è un commento
-                if line and not line.startswith("#"):
-                    count += 1
-    except Exception:
-        return 0
-    return count
+    next_run = None
+    file_to_use = None
 
-def add_to_log(log_list, message):
-    """Aggiunge un messaggio con timestamp alla lista in memoria."""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_list.append(f"[{timestamp}] {message}")
+    # Cerca un orario oggi che sia nel futuro
+    for h in target_hours:
+        candidate = now.replace(hour=h, minute=0, second=0, microsecond=0)
+        if candidate > now:
+            next_run = candidate
+            file_to_use = SCHEDULE[h]
+            break
+    
+    # Se non c'è più nulla oggi (es. sono le 20:00), prendi il primo di domani
+    if next_run is None:
+        next_day = now + datetime.timedelta(days=1)
+        first_hour = target_hours[0]
+        next_run = next_day.replace(hour=first_hour, minute=0, second=0, microsecond=0)
+        file_to_use = SCHEDULE[first_hour]
+
+    return next_run, file_to_use
 
 def main():
-    print(f"--- ORCHESTRATORE AUTOMATICO (Con conteggio utenti) ---")
-    
-    # 1. Setup Cartella
+    print(f"--- ORCHESTRATORE SCHEDULATO ---")
+    adesso = datetime.datetime.now()
+    print(f"🕒 ORA SERVER RILEVATA: {adesso.strftime('%H:%M:%S')}")
+    print(f"Orari target: {list(SCHEDULE.keys())}")
+    print(f"Orari target: {list(SCHEDULE.keys())}")
+    print(f"Durata per sessione: {DURATA_ACQUISIZIONE} minuti")
+    print("-" * 40)
+
     if not os.path.exists(DATA_FOLDER):
         os.makedirs(DATA_FOLDER)
-        
-    session_start_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_filename = f"session_log_{session_start_str}.txt"
-    log_path = os.path.join(DATA_FOLDER, log_filename)
 
-    session_log_buffer = []
-
-    # 2. Header Log
-    header = (
-        f"--- SESSIONE DI RACCOLTA DATI ---\n"
-        f"DATA AVVIO: {session_start_str}\n"
-        f"IMPOSTAZIONI:\n"
-        f"- Durata Raccolta: {MINUTI_LAVORO} min\n"
-        f"- Durata Pausa:    {MINUTI_PAUSA} min\n"
-        f"- Target Totale:   {DURATA_TOTALE_ORE} ore\n"
-        f"-----------------------------------"
-    )
-    session_log_buffer.append(header)
-    
-    start_time_global = time.time()
-    end_time_global = start_time_global + (DURATA_TOTALE_ORE * 3600)
-    cycle_count = 1
-
-    # Conteggio iniziale (prima di partire)
-    initial_total_users = get_db_count(DATA_FOLDER, DB_FILE)
-    add_to_log(session_log_buffer, f"START: Utenti già presenti nel DB: {initial_total_users}")
-
-    try:
-        while time.time() < end_time_global:
-            current_time = datetime.datetime.now().strftime("%H:%M:%S")
-            
-            # Conta utenti PRIMA del ciclo
-            count_before = get_db_count(DATA_FOLDER, DB_FILE)
-            
-            msg_start = f"CICLO {cycle_count}: Avvio raccolta ({MINUTI_LAVORO} min)..."
-            print(f"\n[{current_time}] {msg_start}")
-            add_to_log(session_log_buffer, msg_start)
-            
-            # 3. ESECUZIONE SCRIPT
-            try:
-                subprocess.run([sys.executable, "ricerca_real_time.py", str(MINUTI_LAVORO)], check=True)
-                
-                # Conta utenti DOPO il ciclo
-                count_after = get_db_count(DATA_FOLDER, DB_FILE)
-                new_users_found = count_after - count_before
-                
-                success_msg = (
-                    f"CICLO {cycle_count}: Terminato. "
-                    f"Nuovi utenti: +{new_users_found} | Totale DB: {count_after}"
-                )
-                add_to_log(session_log_buffer, success_msg)
-                
-            except subprocess.CalledProcessError as e:
-                err_msg = f"ERRORE CRITICO ciclo {cycle_count}: {e}"
-                print(err_msg)
-                add_to_log(session_log_buffer, err_msg)
-
-            # Check Stop
-            if time.time() + (MINUTI_PAUSA * 60) > end_time_global:
-                stop_msg = "Tempo totale esaurito. Stop sequenza."
-                print(stop_msg)
-                add_to_log(session_log_buffer, stop_msg)
-                break
-                
-            # 4. PAUSA
-            next_run = datetime.datetime.now() + datetime.timedelta(minutes=MINUTI_PAUSA)
-            pause_msg = f"CICLO {cycle_count}: Pausa {MINUTI_PAUSA} min. Restart: {next_run.strftime('%H:%M:%S')}"
-            print(f"{pause_msg}")
-            add_to_log(session_log_buffer, pause_msg)
-            
-            time.sleep(MINUTI_PAUSA * 60)
-            cycle_count += 1
-
-        final_count = get_db_count(DATA_FOLDER, DB_FILE)
-        total_session_gain = final_count - initial_total_users
-        
-        summary = (
-            f"--- RIEPILOGO SESSIONE ---\n"
-            f"Utenti inizio sessione: {initial_total_users}\n"
-            f"Utenti fine sessione:   {final_count}\n"
-            f"Totale raccolti oggi:   +{total_session_gain}\n"
-            f"--- FINE PROGRAMMA ---"
-        )
-        add_to_log(session_log_buffer, summary)
-        print("\n--- SESSIONE COMPLETATA ---")
-
-    except KeyboardInterrupt:
-        print("\n!!! INTERRUZIONE MANUALE !!!")
-        add_to_log(session_log_buffer, "!!! INTERRUZIONE MANUALE (Ctrl+C) !!!")
-        
-    finally:
-        # 5. SALVATAGGIO LOG
-        print(f"\nSalvataggio log in: {log_path} ...")
+    while True:
         try:
-            with open(log_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(session_log_buffer))
-            print("Log salvato.")
+            # 1. Calcola quando partire
+            next_run, filename = get_next_schedule()
+            now = datetime.datetime.now()
+            wait_seconds = (next_run - now).total_seconds()
+            
+            # Formattazione per stampa
+            hours, remainder = divmod(wait_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            print(f"\n[{now.strftime('%H:%M:%S')}] Prossimo avvio: {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"💤 In attesa per {int(hours)}h {int(minutes)}m {int(seconds)}s... (File target: {filename})")
+
+            # 2. Dormi fino all'ora X
+            time.sleep(wait_seconds)
+
+            # 3. È l'ora! Esegui lo script
+            print(f"\n⏰ DRING! Sono le {next_run.strftime('%H:%M')}. Avvio raccolta su {filename}...")
+            
+
+            cmd = [
+                sys.executable, 
+                "ricerca_real_time.py", 
+                str(DURATA_ACQUISIZIONE), 
+                filename
+            ]
+            
+            subprocess.run(cmd, check=True)
+            
+            print(f"✅ Sessione delle {next_run.hour}:00 completata.")
+            
+            # Piccola pausa di sicurezza per evitare di ripartire nello stesso secondo
+            time.sleep(60)
+
+        except KeyboardInterrupt:
+            print("\n🛑 Orchestrator interrotto manualmente.")
+            break
         except Exception as e:
-            print(f"ERRORE salvataggio log: {e}")
+            print(f"❌ ERRORE IMPREVISTO: {e}")
+            print("Riprovo tra 1 minuto...")
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()

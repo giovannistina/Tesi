@@ -1,4 +1,4 @@
-# Tesi/data_collection/ricerca_real_time.py
+# Tesi/data_collection/ricerca_real_time_old.py
 
 import sys
 import time
@@ -8,7 +8,8 @@ from atproto import FirehoseSubscribeReposClient, parse_subscribe_repos_message
 
 # --- CONFIGURATION ---
 DATA_FOLDER = "data"
-DEFAULT_FILE = "1.txt"  # Usato se non viene passato nessun argomento
+FILE_TIMELINES = "1.txt"      # Database storico (Append)
+# Il nome del batch viene generato dinamicamente nel main
 # ----------------------
 
 def main():
@@ -18,38 +19,33 @@ def main():
     if not os.path.exists(DATA_FOLDER):
         os.makedirs(DATA_FOLDER)
 
-    # 2. Gestione Argomenti (Durata e Nome File)
-    DURATION_MINUTES = 30.0    # Default
-    FILE_TIMELINES = DEFAULT_FILE # Default
-
-    # Argomento 1: Durata
-    if len(sys.argv) > 1:
-        try:
-            DURATION_MINUTES = float(sys.argv[1])
-            print(f"🔧 Config: Durata impostata a {DURATION_MINUTES} minuti.")
-        except ValueError:
-            print("⚠️ Errore lettura durata. Uso default.")
-
-    # Argomento 2: Nome File
-    if len(sys.argv) > 2:
-        FILE_TIMELINES = sys.argv[2]
-        print(f"🔧 Config: File di output impostato a '{FILE_TIMELINES}'.")
-    else:
-        print(f"ℹ️ Nessun file specificato. Uso default '{FILE_TIMELINES}'.")
-
-    # Setup Percorsi
+    # 2. Setup Nomi File Dinamici
     timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     batch_filename = f"batch_{timestamp_str}.txt"
     
     path_timelines = os.path.join(DATA_FOLDER, FILE_TIMELINES)
     path_batch = os.path.join(DATA_FOLDER, batch_filename)
 
+    # 3. Input Tempo (AUTOMATICO PER ORCHESTRATORE)
+    # Se lo script riceve un argomento (es. dall'orchestrator), usa quello.
+    if len(sys.argv) > 1:
+        DURATION_MINUTES = float(sys.argv[1])
+        print(f"Modalità Automatica: Durata impostata a {DURATION_MINUTES} minuti.")
+    else:
+        # Altrimenti chiede all'utente
+        try:
+            minutes_input = input("Durata acquisizione in MINUTI: ")
+            DURATION_MINUTES = float(minutes_input)
+        except ValueError:
+            print("Valore non valido. Default: 30 minuti.")
+            DURATION_MINUTES = 30.0
+
     # Calcolo Tempi
     start_time = time.time()
     end_time_limit = start_time + (DURATION_MINUTES * 60)
     start_dt_str = datetime.datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
 
-    # 4. Caricamento memoria storico (per non duplicare nello stesso file)
+    # 4. Caricamento memoria storico
     unique_users = set()
     if os.path.exists(path_timelines):
         with open(path_timelines, 'r', encoding='utf-8') as f:
@@ -61,10 +57,8 @@ def main():
     session_users = [] 
 
     # 5. Apertura File
-    # f1: File target cumulativo (es. 3.txt) - APPEND
-    # f2: File di backup della singola sessione (batch_...) - WRITE
-    f1 = open(path_timelines, 'a', encoding='utf-8') 
-    f2 = open(path_batch, 'w', encoding='utf-8')      
+    f1 = open(path_timelines, 'a', encoding='utf-8') # Storico (Append)
+    f2 = open(path_batch, 'w', encoding='utf-8')     # Batch Corrente (Nuovo file)
 
     header = (
         f"# SESSION START: {start_dt_str}\n"
@@ -90,7 +84,7 @@ def main():
 
             user_did = commit.repo
             
-            # Logica: Se non l'ho mai visto prima (nello storico caricato)
+            # Logica: Se non l'ho mai visto prima (nello storico)
             if user_did and user_did not in unique_users:
                 unique_users.add(user_did)
                 session_users.append(user_did)
@@ -108,8 +102,7 @@ def main():
                     sys.stdout.flush()
 
         except Exception as e:
-            # Ignoriamo errori di rete minori per non fermare il flusso
-            pass
+            print(f"Error: {e}")
 
     client = FirehoseSubscribeReposClient()
     
