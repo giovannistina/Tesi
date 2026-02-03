@@ -1,7 +1,19 @@
 # Tesi/data_collection/crawltimelines_limited.py
 # Utilizzo: python crawltimelines_limited.py <NUMERO_FILE>
-# Esempio: python crawltimelines_limited.py 1
+# Esempio: python crawl_timelines_limited.py 1
 
+import subprocess
+import sys
+
+# Tenta di importare atproto. Se non c'è, lo installa e poi prosegue.
+try:
+    import atproto
+except ImportError:
+    print("⚠️ Libreria 'atproto' mancante. Installazione automatica in corso...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "atproto"])
+    print("✅ Installazione completata.")
+    import atproto
+    
 from atproto_client import Client, SessionEvent
 from atproto.exceptions import RequestException, BadRequestError
 from dateutil import parser
@@ -16,8 +28,8 @@ import json
 import getpass 
 
 # --- CONFIGURAZIONE FISSA ---
-SAVE_EVERY_N_USERS = 100
-MAX_WORKERS = 10  
+SAVE_EVERY_N_USERS = 20
+MAX_WORKERS = 3  
 MAX_USER_ERRORS = 10
 
 # !!! MODIFICATO: LIMITE AUMENTATO A 720 !!!
@@ -204,82 +216,104 @@ def process_user_wrapper(client, user):
     except Exception:
         return user, []
 
+# --- INIZIO NUOVO BLOCCO MAIN ---
 if __name__ == '__main__':
+    # Importiamo il Garbage Collector per forzare la pulizia RAM
+    import gc 
     start_run_time = time.time()
     
-    if len(sys.argv) < 2:
-        print("Uso: python crawltimelines_limited.py <CHUNK_NUMBER>")
+    # --- GESTIONE ARGOMENTI ---
+    if len(sys.argv) == 4:
+        CHUNK = int(sys.argv[1])
+        CLI_USER = sys.argv[2]
+        CLI_PASS = sys.argv[3]
+        print(f"✅ Login automatico via argomenti per: {CLI_USER}")
+    elif len(sys.argv) == 2:
+        CHUNK = int(sys.argv[1])
+        print(f"🔑 CONFIGURAZIONE CREDENZIALI PER CHUNK {CHUNK}")
+        try:
+            CLI_USER = input("Inserisci Username Bluesky: ").strip()
+            CLI_PASS = getpass.getpass("Inserisci Password Bluesky: ").strip()
+        except KeyboardInterrupt:
+            sys.exit(0)
+    else:
+        print("Uso: python crawltimelines_limited.py <CHUNK> [USER] [PASS]")
         sys.exit(1)
-
-    CHUNK = int(sys.argv[1])
-    
-    print("\n" + "="*40)
-    print(f"🔑 CONFIGURAZIONE CREDENZIALI PER CHUNK {CHUNK}")
-    print("="*40)
-    
-    try:
-        CLI_USER = input("Inserisci Username Bluesky: ").strip()
-        CLI_PASS = getpass.getpass("Inserisci Password Bluesky (non visibile): ").strip()
-    except KeyboardInterrupt:
-        print("\nOperazione annullata.")
-        sys.exit(0)
+    # --------------------------
 
     SESSION_FILE = f"session_{CHUNK}.txt"
-    
     try:
         client = init_client_dynamic(CLI_USER, CLI_PASS, SESSION_FILE)
     except Exception as e:
         print(f"Login failed: {e}")
         sys.exit(1)
 
-    user_list = _read_list(f'data/{CHUNK}.txt')
+    # 1. Carichiamo le liste
+    all_users = _read_list(f'data/{CHUNK}.txt')
     processed_raw = _read_list(f'processedT_{CHUNK}.txt')
     
     processed_set = set()
     for p in processed_raw:
         parts = p.split('\t')
-        if parts:
-            processed_set.add(parts[0])
+        if parts: processed_set.add(parts[0])
 
-    n_processed = len(processed_set)
-    if n_processed > 0:
-        original_count = len(user_list)
-        user_list = [u for u in user_list if u not in processed_set]
-        print(f'Resuming: {original_count} total, {len(user_list)} left.')
+    # 2. Filtriamo chi manca
+    users_to_do = [u for u in all_users if u not in processed_set]
+    original_count = len(all_users)
+    count_left = len(users_to_do)
     
-    users_to_process_count = len(user_list)
-    
-    all_posts_buffer = []
-    processed_buffer = []
+    if len(processed_set) > 0:
+        print(f'Resuming: {original_count} total, {count_left} left.')
 
     print(f"Starting collection on CHUNK {CHUNK} with User {CLI_USER}...")
-
-    try:
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            future_to_user = {executor.submit(process_user_wrapper, client, user): user for user in user_list}
-            
-            for i, future in enumerate(tqdm(as_completed(future_to_user), total=len(user_list), desc=f"Chunk {CHUNK}", unit="user")):
-                
-                user, posts = future.result()
-                
-                if posts:
-                    all_posts_buffer.extend(posts)
-                processed_buffer.append(user)
-                
-                total_done = n_processed + i + 1
-
-                if total_done % SAVE_EVERY_N_USERS == 0:
-                    _save(all_posts_buffer, processed_buffer, total_done, CHUNK)
-                    all_posts_buffer = []
-                    processed_buffer = []
-
-            if all_posts_buffer or processed_buffer:
-                total_done = n_processed + len(user_list)
-                _save(all_posts_buffer, processed_buffer, total_done, CHUNK)
-
-    except KeyboardInterrupt:
-        print("\nInterrupted by user.")
     
+    # --- MODIFICA FONDAMENTALE: BATCH PROCESSING ---
+    # Invece di caricare 60.000 future insieme, processiamo a blocchi
+    # Questo mantiene la RAM piatta e costante.
+    
+    batch_size = SAVE_EVERY_N_USERS  # Usiamo 20 (o quello che hai impostato)
+    total_processed_session = 0
+
+    # Creiamo un Executor che vivrà per tutto il tempo (così non lo ricreiamo sempre)
+    # Nota: max_workers qui definisce il parallelismo reale
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        
+        # Iteriamo sulla lista a blocchi (es. 0-20, 20-40, 40-60...)
+        for i in range(0, len(users_to_do), batch_size):
+            
+            # 1. Prendiamo solo un pezzetto di lista
+            batch_users = users_to_do[i : i + batch_size]
+            
+            # 2. Sottomettiamo SOLO questi al ThreadPool
+            future_to_user = {executor.submit(process_user_wrapper, client, user): user for user in batch_users}
+            
+            batch_posts = []
+            batch_processed_users = []
+            
+            # 3. Attendiamo i risultati di questo piccolo batch
+            for future in as_completed(future_to_user):
+                user, posts = future.result()
+                if posts:
+                    batch_posts.extend(posts)
+                batch_processed_users.append(user)
+            
+            # 4. Salviamo subito
+            current_total_done = len(processed_set) + total_processed_session + len(batch_processed_users)
+            _save(batch_posts, batch_processed_users, current_total_done, CHUNK)
+            
+            # Aggiorniamo contatori per logica
+            total_processed_session += len(batch_processed_users)
+            
+            # 5. PULIZIA RAM AGGRESSIVA
+            del future_to_user
+            del batch_posts
+            del batch_processed_users
+            gc.collect()  # <--- Forza Python a liberare la memoria ORA
+            
+            # Log di progresso manuale (visto che non usiamo più tqdm globale per evitare memory leak della bar)
+            percent = (current_total_done / original_count) * 100
+            print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] Chunk {CHUNK}: {current_total_done}/{original_count} ({percent:.2f}%) - RAM Pulita")
+
     end_run_time = time.time()
     total_duration = end_run_time - start_run_time
     minutes = total_duration / 60
@@ -287,6 +321,6 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     print("                FINAL REPORT")
     print("="*50)
-    print(f"USERS PROCESSED:      {users_to_process_count}")
+    print(f"USERS PROCESSED:      {count_left}")
     print(f"TOTAL TIME:           {total_duration:.2f}s ({minutes:.2f} min)")
     print("="*50 + "\n")

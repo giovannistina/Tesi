@@ -1,0 +1,44 @@
+
+    === REPORT STEP 2: STIMA PARAMETRI (DETTAGLIATO) ===
+    
+    1. ASSUMPTION 1: LEGGE DI POTENZA (VIRALITÀ - Theta)
+       -----------------------------------------------------
+       > Valore Theta Globale: 0.5750
+       > Metodo: Regressione Lineare su scala Log-Log (binning su 50 fasce).
+       > Significato: Rappresenta l'esponente della relazione E[V] ~ X^theta.
+       > Interpretazione Tesi:
+         - Se Theta < 1.0: Il sistema tende all'Equilibrio (Fair Play).
+           Il vantaggio di essere famosi cresce meno che proporzionalmente.
+         - Se Theta >= 1.0: Il sistema tende al Monopolio (Dominanza).
+           Effetto "Rich-get-Richer" esplosivo.
+
+    2. ASSUMPTION 2: QUALITÀ INTRINSECA (MERITO - Beta)
+       -----------------------------------------------------
+       > Verifica Distribuzione: Vedi grafico 'step2_2_lognormal_check.png'.
+         (Se la curva rossa fitta l'istogramma, il rumore è moltiplicativo/Lognormale).
+       > Merito Medio (Beta Pulito): 35.2009
+       > Metodo: Calcolato per ogni post con la formula inversa:
+         Beta_i = V_reale / (Popolarità_pregressa ^ Theta)
+       > Significato:
+         È la capacità "pura" dell'utente di generare like,
+         depurata dal vantaggio di avere già follower/visibilità.
+
+    3. ASSUMPTION 3: DINAMICA DI POSTING (ATTIVITÀ - Lambda)
+       -----------------------------------------------------
+       > Modello fittato: Lambda(X) = 20.42 + -18.67 * X^-0.35
+       > Parametro Chiave Phi (Reattività): -0.3532
+       > Interpretazione Tesi:
+         - Se Phi ~ 0: L'attività è costante (Processo di Poisson omogeneo).
+           La popolarità non influenza quanto spesso un utente posta.
+         - Se Phi > 0: Processo "Self-Exciting".
+           Diventare popolari incentiva l'utente a postare molto di più.
+    
+    4. DATASET FINALE
+       -----------------------------------------------------
+       Parametri individuali salvati in:
+       /home/students/s332085/Tesi/experiments/replica_paper/data/user_parameters_estimated.csv
+       
+       Contiene per ogni utente (86322 totali):
+       - beta_merit: La qualità media stimata dell'utente.
+       - n_posts_analyzed: Su quanti post è basata la stima.
+    

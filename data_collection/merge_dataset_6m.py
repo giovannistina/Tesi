@@ -1,5 +1,6 @@
-# Tesi/data_collection/merge_dataset.py
-# Unisce timelines-11...14 e dati_profili in un unico file finale.
+# Tesi/data_collection/merge_dataset_6m.py
+# Unisce timelines-6m-chunk... e dati_profili_completi_6_mesi in un unico file finale.
+
 
 
 
@@ -7,43 +8,46 @@ import gzip
 import json
 import os
 import time
+import glob
 from datetime import datetime
 
 # --- CONFIGURAZIONE ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
-PROFILE_FILE = os.path.join(DATA_DIR, 'dati_profili_completi.jsonl.gz')
-OUTPUT_FILE = os.path.join(DATA_DIR, 'dataset_definitivo.jsonl.gz')
 
-START_CHUNK = 11
-END_CHUNK = 14
+# 1. Nome esatto del file profili appena creato
+PROFILE_FILE = os.path.join(DATA_DIR, 'dati_profili_completi_6_mesi.jsonl.gz')
+
+# 2. Output finale
+OUTPUT_FILE = os.path.join(DATA_DIR, 'dataset_definitivo_6mesi.jsonl.gz')
+
+# 3. Pattern per trovare i chunk (timelines-6m-chunk_0, _1, etc.)
+TIMELINE_PATTERN = os.path.join(DATA_DIR, 'timelines-6m-*.jsonl.gz')
 # ----------------------
 
 def get_job_info():
-    """Calcola subito il peso totale per la percentuale."""
+    """Trova automaticamente tutti i chunk scaricati."""
     total = 0
     files = []
-    for i in range(START_CHUNK, END_CHUNK + 1):
-        # Cerca file con _ o -
-        f1 = os.path.join(DATA_DIR, f"timelines_{i}.jsonl.gz")
-        f2 = os.path.join(DATA_DIR, f"timelines-{i}.jsonl.gz")
+    
+    # Usa glob per trovare tutti i file che corrispondono al pattern
+    found_files = glob.glob(TIMELINE_PATTERN)
+    
+    for path in found_files:
+        size = os.path.getsize(path)
+        total += size
+        # Estraiamo un ID dal nome file per riferimento (es. chunk_0)
+        chunk_id = os.path.basename(path).split('.')[0]
+        files.append((chunk_id, path, size))
         
-        path = None
-        if os.path.exists(f1): path = f1
-        elif os.path.exists(f2): path = f2
-        
-        if path:
-            size = os.path.getsize(path)
-            total += size
-            files.append((i, path, size))
     return total, files
 
 def load_profiles():
-    """Carica i profili stampando aggiornamenti per non sembrare bloccato."""
+    """Carica i profili stampando aggiornamenti."""
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 📂 Inizio caricamento profili in RAM...", flush=True)
     
     if not os.path.exists(PROFILE_FILE):
-        print("❌ File profili non trovato!", flush=True)
+        print(f"❌ File profili non trovato: {PROFILE_FILE}", flush=True)
         return {}
         
     data = {}
@@ -57,48 +61,50 @@ def load_profiles():
                         data[r['did']] = r
                         count += 1
                         
-                        # FEEDBACK IMMEDIATO: Stampa ogni 100k profili caricati
-                        if count % 100000 == 0:
-                            print(f"   ...caricati {count} profili...", flush=True)
+                        if count % 10000 == 0:
+                            print(f"   ...caricati {count} profili...", end='\r', flush=True)
                 except: continue
                 
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Profili pronti: {len(data)}", flush=True)
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ✅ Profili pronti: {len(data)}", flush=True)
         return data
     except Exception as e:
         print(f"❌ Errore profili: {e}", flush=True)
         return {}
 
 def main():
-    # 1. STAMPA IMMEDIATA: Info lavoro
+    # 1. Cerca i file
     total_job_bytes, files_list = get_job_info()
+    
+    if not files_list:
+        print(f"❌ Nessun file timeline trovato in {TIMELINE_PATTERN}")
+        return
+
     total_gb = total_job_bytes / (1024**3)
     
     print("="*60, flush=True)
     print(f"📊 LAVORO TROVATO: {len(files_list)} file | {total_gb:.2f} GB Totali", flush=True)
     print("="*60, flush=True)
 
-    # 2. Caricamento Profili (con feedback visuale)
+    # 2. Carica profili
     profiles_map = load_profiles()
 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 AVVIO MERGE...", flush=True)
     
     total_posts = 0
     enriched_posts = 0
-    
     bytes_done_prev = 0
-    # Impostiamo il timer nel passato per forzare la PRIMA stampa appena inizia il loop
     last_log_time = time.time() - 60 
     
+    # Apre il file finale in scrittura
     with gzip.open(OUTPUT_FILE, 'wt', encoding='utf-8') as fout:
         
         for chunk_id, input_path, file_size in files_list:
             filename = os.path.basename(input_path)
-            # Stampa immediata cambio file
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ⤵️  Apro: {filename}", flush=True)
             
             try:
-                # Apertura file binario per calcolo byte precisi
-                with open(input_path, 'rb') as f_raw:
+                # Legge il file di input
+                with open(input_path, 'rb') as f_raw: # Apro binario per .tell()
                     with gzip.open(f_raw, 'rt', encoding='utf-8') as fin:
                         
                         for line in fin:
@@ -106,27 +112,25 @@ def main():
                                 post = json.loads(line)
                                 total_posts += 1
                                 
-                                # Arricchimento
+                                # ARRICCHIMENTO
                                 did = post.get('author', {}).get('did')
                                 if did and did in profiles_map:
                                     post['author_meta'] = profiles_map[did]
                                     enriched_posts += 1
                                 
+                                # Scrittura
                                 fout.write(json.dumps(post) + '\n')
 
-                                # LOGICA LOG (Ogni 2000 post controlla il tempo)
-                                if total_posts % 2000 == 0:
+                                # LOGICA LOG
+                                if total_posts % 5000 == 0:
                                     now = time.time()
-                                    if now - last_log_time >= 30: # Ogni 30 secondi
-                                        
-                                        # Calcolo % Totale
+                                    if now - last_log_time >= 30:
                                         cur_pos = f_raw.tell()
                                         done = bytes_done_prev + cur_pos
                                         pct = (done / total_job_bytes) * 100
                                         
                                         ts = datetime.now().strftime('%H:%M:%S')
                                         print(f"[{ts}] {filename} | Post: {total_posts} | ⏳ Totale: {pct:.2f}%", flush=True)
-                                        
                                         last_log_time = now
 
                             except json.JSONDecodeError:
@@ -138,7 +142,9 @@ def main():
             bytes_done_prev += file_size
 
     print("="*60, flush=True)
-    print(f"🎉 FINE. Post: {total_posts} | Arricchiti: {enriched_posts}", flush=True)
+    print(f"🎉 FINE. Dataset salvato in: {OUTPUT_FILE}")
+    print(f"   Post totali: {total_posts}")
+    print(f"   Arricchiti: {enriched_posts}")
 
 if __name__ == "__main__":
     main()

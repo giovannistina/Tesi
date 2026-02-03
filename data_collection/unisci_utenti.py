@@ -20,7 +20,7 @@ def unisci_files():
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as outfile:
         
         # Cicla i file da 1 a 4
-        for i in range(1, 5):
+        for i in range(11, 15):
             filename = f"{i}.txt"
             filepath = os.path.join(DATA_DIR, filename)
             

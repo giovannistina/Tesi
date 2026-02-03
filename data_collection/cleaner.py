@@ -1,58 +1,103 @@
 # Tesi/data_collection/cleaner.py
-# lo lancio per controllare che il file n.txt non contenga nomi utenti presenti già negli altri n.txt. in questo modo non perdo tempo con i bot che ho già salvato
-# devo lanciare così: ######## python cleaner.py n.txt ########
-
+# python cleaner.py 12.txt
 
 import sys
 import os
 
-def clean_file(target_file):
-    # 1. Deduce il numero del file corrente (es. "3.txt" -> 3)
+# Configurazione cartella dati
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+
+# !!! MODIFICA QUI !!!
+# Il numero del primo file da considerare come "storico".
+# I file prima di questo numero (es. 1.txt ... 10.txt) verranno IGNORATI.
+START_FROM_CHUNK = 11 
+
+def clean_file(filename_arg):
+    # Gestisce sia se passi "12.txt" sia se passi "data/12.txt"
+    filename_only = os.path.basename(filename_arg) 
+    target_path = os.path.join(DATA_DIR, filename_only)
+
+    # 1. Deduce il numero
     try:
-        base_name = os.path.basename(target_file)
-        current_num = int(base_name.split('.')[0])
+        current_num = int(filename_only.split('.')[0])
     except ValueError:
-        print(f"ERRORE: Il file '{target_file}' non segue il formato 'numero.txt' (es. 1.txt, 2.txt).")
+        print(f"ERRORE: '{filename_only}' non è nel formato 'numero.txt'.")
         sys.exit(1)
 
-    # 2. Identifica i file precedenti (da 1 a N-1)
-    previous_files = [f"{i}.txt" for i in range(1, current_num)]
+    # 2. Identifica file precedenti (MODIFICATO: parte da START_FROM_CHUNK)
+    # Se current_num è 11, range(11, 11) è vuoto -> Corretto, perché 11 è il primo.
+    # Se current_num è 12, range(11, 12) cerca solo 11.txt.
+    previous_files = [os.path.join(DATA_DIR, f"{i}.txt") for i in range(START_FROM_CHUNK, current_num)]
     
     if not previous_files:
-        print(f"Nessun file precedente da controllare per {target_file}. Nessuna pulizia necessaria.")
+        print(f"Nessun file precedente trovato (nel range {START_FROM_CHUNK}-{current_num-1}). Nessuna pulizia necessaria.")
         return
 
-    print(f"Target: {target_file}. Controllo duplicati rispetto a: {previous_files}")
+    print(f"Target: {filename_only}")
+    print(f"Confronto con: {[os.path.basename(f) for f in previous_files]}")
 
-    # 3. Carica la memoria dei file precedenti
+    # 3. Carica memoria storici (ignora le righe che iniziano con #)
     seen_users = set()
     for p_file in previous_files:
         if os.path.exists(p_file):
-            with open(p_file, 'r') as f:
-                seen_users.update(line.strip() for line in f if line.strip())
-        else:
-            print(f"Avviso: Il file precedente {p_file} non esiste. Verrà ignorato.")
+            with open(p_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    l = line.strip()
+                    if l and not l.startswith("#"):
+                        seen_users.add(l)
 
-    # 4. Legge il target, filtra e sovrascrive
-    if not os.path.exists(target_file):
-        print(f"ERRORE: Il file target {target_file} non esiste.")
+    # 4. Lettura Target e Filtraggio (PRESERVANDO I COMMENTI)
+    if not os.path.exists(target_path):
+        print(f"ERRORE: {filename_only} non esiste in {DATA_DIR}")
         sys.exit(1)
 
-    with open(target_file, 'r') as f:
-        target_users = [line.strip() for line in f if line.strip()]
+    lines_to_write = []
+    users_checked_count = 0
+    removed_count = 0
 
-    unique_users = [u for u in target_users if u not in seen_users]
+    with open(target_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            stripped = line.strip()
+            
+            # Se è vuota, saltiamo
+            if not stripped:
+                continue
 
-    with open(target_file, 'w') as f:
-        for u in unique_users:
-            f.write(f"{u}\n")
+            # CASO A: È un commento -> MANTENERE ASSOLUTAMENTE
+            if stripped.startswith("#"):
+                lines_to_write.append(stripped)
+            
+            # CASO B: È un utente -> CONTROLLARE
+            else:
+                users_checked_count += 1
+                if stripped in seen_users:
+                    # Duplicato: lo scartiamo
+                    removed_count += 1
+                else:
+                    # Utente valido: lo teniamo
+                    lines_to_write.append(stripped)
 
-    print(f"OPERAZIONE COMPLETATA: {target_file} sovrascritto.")
-    print(f"Utenti totali: {len(target_users)} -> Utenti univoci salvati: {len(unique_users)}")
+    # 5. Sovrascrittura file
+    with open(target_path, 'w', encoding='utf-8') as f:
+        for line in lines_to_write:
+            f.write(f"{line}\n")
+        
+        # Aggiunta Report Finale
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"# ------------------------------------------------\n")
+        f.write(f"# CHECK ESEGUITO IL: {timestamp}\n")
+        f.write(f"# RANGE CONTROLLO: {START_FROM_CHUNK} -> {current_num-1}\n")
+        f.write(f"# UTENTI ANALIZZATI: {users_checked_count}\n")
+        f.write(f"# RIMOSSI DUPLICATI: {removed_count}\n")
+
+    print(f"✅ FATTO. Rimossi {removed_count} duplicati.")
+    print(f"Report aggiunto in coda a {filename_only}.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Uso: python cleaner.py <file_da_pulire.txt>")
+        print("Uso: python cleaner.py <numero.txt>")
         sys.exit(1)
     
     clean_file(sys.argv[1])

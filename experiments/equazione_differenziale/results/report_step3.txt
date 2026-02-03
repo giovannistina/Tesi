@@ -1,0 +1,24 @@
+
+    === REPORT STEP 3: FAIRNESS E DOMINANZA ===
+    
+    1. ANALISI CORRELAZIONE (EFFICIENZA DI MERCATO)
+       Utenti analizzati: 71303
+       
+       - Kendall Tau: 0.1686
+         * Se vicino a 1.0: Il sistema è meritocratico (i migliori emergono sempre).
+         * Se vicino a 0.0: Il successo è casuale o dominato solo dal 'Rich-get-Richer'.
+         * Confronto paper (es. Facebook): Di solito è intorno a 0.4 - 0.6.
+       
+       - Pearson Correlation (Log-Log): 0.2514
+         Indica quanto la popolarità scala con la qualità.
+
+    2. ANALISI TOP-RANK (ELITE)
+       Quanto spesso i "Migliori" sono anche i "Più Famosi"?
+       
+       - Top 100: 0.0% di sovrapposizione.
+       - Top 1000: 0.6% di sovrapposizione.
+       
+       Interpretazione:
+       Se questa percentuale è bassa (es. < 20%), significa che l'élite della piattaforma 
+       non è composta dai creatori di contenuti migliori, ma da chi è arrivato prima.
+    
