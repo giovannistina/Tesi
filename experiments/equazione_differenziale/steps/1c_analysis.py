@@ -1,4 +1,4 @@
-# Tesi / experiments / equazione_differenziale / step_1 / c_analysis.py
+# Tesi / experiments / equazione_differenziale / steps / 1c_analysis.py
 
 import pandas as pd
 import numpy as np

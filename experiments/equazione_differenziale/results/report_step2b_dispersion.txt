@@ -1,0 +1,22 @@
+
+    === REPORT ANALISI DISPERSIONE (BURSTINESS) ===
+    
+    Riferimento Paper: Section 3.1.2 (Posting Activity validation)
+    
+    1. METODOLOGIA
+       - Finestra temporale: 7 giorni
+       - Utenti analizzati: 28959 (con almeno 4 settimane di dati)
+       - Formula: D = Varianza(Post/Week) / Media(Post/Week)
+    
+    2. RISULTATI
+       - Indice di Dispersione Medio: 13.0452
+       - Indice di Dispersione Mediano: 5.0895
+       - % Utenti "Bursty" (D > 1.1): 90.93%
+       
+    3. INTERPRETAZIONE TESI
+       - Se D ≈ 1: Gli utenti postano a caso (Poisson). Il modello statico basterebbe.
+       - Se D >> 1 (Il tuo caso atteso): Gli utenti hanno esplosioni di attività.
+         Questo GIUSTIFICA l'uso della funzione Lambda dinamica:
+         Lambda(t) = Lambda_0 + Lambda_1 * X(t)^Phi
+         (La popolarità o l'entusiasmo portano a postare raffiche di contenuti).
+    

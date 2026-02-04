@@ -4,3 +4,6 @@ __pycache__/
 session.txt
 *.pyc
 graficox_momentaneo.py
+# Ignora dataset pesanti
+*.gz
+*.jsonl

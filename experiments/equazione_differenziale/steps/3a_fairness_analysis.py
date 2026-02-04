@@ -1,4 +1,4 @@
-# Tesi / experiments / equazione_differenziale / step_3 / a_fairness_analysis.py
+# Tesi / experiments / equazione_differenziale / steps / 3a_fairness_analysis.py
 
 import pandas as pd
 import numpy as np

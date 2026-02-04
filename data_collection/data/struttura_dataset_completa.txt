@@ -1,0 +1,19 @@
+MAPPA DETTAGLIATA DEL DATASET (TUTTI I LIVELLI)
+==================================================
+📂 uri (str)
+📂 cid (str)
+📂 user (str)
+📂 author (dict)
+    📂 did (str)
+📂 record (dict)
+    📂 text (str)
+    📂 created_at (str)
+    📂 langs (list)
+        📜 [Contenuto Lista: str]
+    📂 reply (NoneType)
+📂 embed_type (str)
+📂 labels (list)
+    📜 [Lista Vuota]
+📂 like_count (int)
+📂 repost_count (int)
+📂 reply_count (int)

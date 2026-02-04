@@ -1,43 +1,5 @@
-
-    === REPORT ANALISI DATASET (CON BIAS CHECK) ===
-    Data Analisi: 2026-02-03 18:01:23.015663
-    
-    1. VOLUMETRIA
-       - Post Totali Letti: 18,131,931
-       - Utenti Unici: 274,625
-       - Like Totali Distribuiti: 19,264,881,809
-    
-    2. ANALISI LIMITE API & BIAS
-       - Utenti Totali: 274625
-       - Utenti Saturi (Power Users >= 4300): 793
-       - Percentuale Saturi: 0.29%
-       
-       NOTA SUL GRAFICO 3 (Timeline):
-       Osserva la linea ROSSA tratteggiata. Se cala drasticamente andando indietro 
-       nel tempo, mentre la linea VERDE rimane stabile, è la conferma che il 
-       calo di volume storico è dovuto esclusivamente al limite di download 
-       dei Power Users.
-    
-    3. STATISTICHE ATTIVITÀ
-       - Media: 66.02
-       - Mediana: 2
-       - Max: 98500
-       
-    4. TOP 10 UTENTI PIÙ ATTIVI
-                                      posts       likes
-did:plc:4llrhdclvdlmmynkwsmg5tdc  98500  1482967017
-did:plc:5o6k7jvowuyaquloafzn3cfw  76456   706698663
-did:plc:4lx6nur5wstwoc4wtgj56kyu  62826   821262310
-did:plc:t6ubj2wlhc34awzcymh3qpur  62254   671279519
-did:plc:x4g4laxkmsrczwvnvbbgsm7g  47144   576850262
-did:plc:7qqkq2zdwq4j5jingukgtuky  41892   451563703
-did:plc:iu4j537hox5huj4bwnwgub4z  38910   663026812
-did:plc:4u3hwe3p7oy3hoy3amlw7rp2  38025   411767844
-did:plc:uo2fna47c4v6zcnklxfhcvjb  29608   287556087
-did:plc:xjc7mkotpenvhh6ffewkdpyn  29038   343541394
-
-    5. TOP LINGUE
-       [('en', 11337568), ('ja', 1037108), ('es', 573410), ('de', 561397), ('pt', 344765), ('fr', 329531), ('nl', 152388), ('en-US', 127302), ('it', 101671), ('pl', 69107)]
-       
-    Grafici salvati in: /home/students/s332085/Tesi/experiments/replica_paper/analisi_campione_30k/results_overview
-    
+Post Totali: 31,248,323
+Utenti: 29,993
+Saturi: 2619 (8.73%)
+Media Post: 1041.85
+Top 10 Lingue: [('en', 21608210), ('ja', 1607921), ('de', 1076472), ('es', 970603), ('pt', 668814), ('fr', 560930), ('nl', 260018), ('ko', 163406), ('it', 137870), ('en-US', 129335)]

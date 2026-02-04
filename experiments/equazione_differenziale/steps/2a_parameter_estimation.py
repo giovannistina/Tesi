@@ -1,4 +1,4 @@
-# Tesi / experiments / equazione_differenziale / step_2 / a_parameter_estimation.py
+# Tesi / experiments / equazione_differenziale / steps / 2a_parameter_estimation.py
 
 import pandas as pd
 import numpy as np
@@ -72,37 +72,63 @@ def main():
     plt.savefig(os.path.join(OUTPUT_DIR_IMGS, "2a_assumption1_theta.png"))
     plt.close()
 
-    # =========================================================================
-    # ASSUMPTION 2: LOGNORMALITÀ DEGLI SCARTI & BETA PULITO
-    # Obiettivo: Calcolare il vero merito (Beta) togliendo l'effetto popolarità
+# =========================================================================
+    # ASSUMPTION 2: LOGNORMALITÀ DEGLI SCARTI & BETA PULITO (CORRETTO)
     # =========================================================================
     print("\n📊 2. ASSUMPTION 2: Beta 'Meritocratico' e Lognormalità...")
     
-    # Formula chiave: Beta_Merit = V / (X^Theta)
-    # Questo ci dice quanto vale il post "al netto" della fama dell'autore
+    # Calcolo Beta
     df_clean['beta_merit_i'] = df_clean['v_i'] / (df_clean['prev_X'] ** GLOBAL_THETA)
     
-    # Analisi degli scarti (Log dei beta meritocratici)
-    # Se il paper ha ragione, questa distribuzione deve essere una Gaussiana (campana)
-    log_residuals = np.log(df_clean['beta_merit_i'])
-    log_residuals = log_residuals[np.isfinite(log_residuals)]
+    # Rimuoviamo eventuali inf/nan o valori <= 0 (impossibili per lognorm)
+    data_beta = df_clean['beta_merit_i']
+    data_beta = data_beta[data_beta > 0].dropna()
 
-    # Grafico Assumption 2
+    # --- METODO ROBUSTO PER IL FIT ---
+    # 1. Passiamo allo spazio logaritmico
+    log_data = np.log(data_beta)
+    
+    # 2. Calcoliamo media (mu) e sigma sui logaritmi (Fit Normale)
+    # Questo è matematicamente equivalente a fittare una Lognormale ma molto più stabile
+    mu, sigma =  np.mean(log_data), np.std(log_data)
+    
+    # Parametri per scipy.stats.lognorm:
+    # s (shape) = sigma
+    # scale = exp(mu)
+    # loc = 0 (fissato a zero perché il merito non può essere negativo)
+    shape_fit = sigma
+    scale_fit = np.exp(mu)
+    
+    print(f"   ✅ Parametri Lognormal Fit: Mu={mu:.2f}, Sigma={sigma:.2f}")
+
+    # --- GRAFICO CORRETTO ---
     plt.figure(figsize=(10,6))
-    sns.histplot(df_clean['beta_merit_i'], log_scale=True, stat='density', label='Empirica')
     
-    # Sovrapposizione Fit Lognormale teorico
-    shape, loc, scale = lognorm.fit(df_clean['beta_merit_i'])
-    x_pdf = np.logspace(np.log10(df_clean['beta_merit_i'].min()), 
-                        np.log10(df_clean['beta_merit_i'].quantile(0.99)), 100)
-    plt.plot(x_pdf, lognorm.pdf(x_pdf, shape, loc, scale), 'r-', lw=2, label='Fit Lognormale')
+    # Istogramma dei dati reali
+    # 'stat="density"' è fondamentale per confrontarlo con la curva teorica
+    sns.histplot(data_beta, log_scale=True, stat='density', 
+                 color='steelblue', alpha=0.6, label='Dati Empirici (Beta)', element="step", fill=True)
     
-    plt.title("Assumption 2: Distribuzione del Merito 'Puro' (Beta)")
-    plt.xlabel(r"Beta Meritocratico ($V / X^\theta$)")
+    # Generazione Curva Teorica (Linea Rossa)
+    # Creiamo un asse X logaritmico che copre tutto il range dei tuoi dati
+    x_min, x_max = data_beta.min(), data_beta.max()
+    x_pdf = np.logspace(np.log10(x_min), np.log10(x_max), 200)
+    
+    # Calcolo PDF teorica usando i parametri robusti
+    y_pdf = lognorm.pdf(x_pdf, s=shape_fit, scale=scale_fit, loc=0)
+    
+    plt.plot(x_pdf, y_pdf, 'r-', lw=2.5, label=f'Fit Lognormale\n($\mu={mu:.2f}, \sigma={sigma:.2f}$)')
+    
+    plt.title(f"Assumption 2: Distribuzione del Merito (Fit Lognormale)\nValore Medio Beta = {data_beta.mean():.2f}")
+    plt.xlabel(r"Beta Meritocratico ($V / X^\theta$) - Scala Log")
+    plt.ylabel("Densità di Probabilità")
     plt.legend()
-    plt.savefig(os.path.join(OUTPUT_DIR_IMGS, "2b_assumption2_lognormal.png"))
+    plt.grid(True, which="both", ls="--", alpha=0.3)
+    
+    output_path = os.path.join(OUTPUT_DIR_IMGS, "2b_assumption2_lognormal.png")
+    plt.savefig(output_path)
     plt.close()
-
+    print(f"   💾 Grafico salvato in: {output_path}")
     # =========================================================================
     # ASSUMPTION 3: ATTIVITÀ DI POSTING (Lambda vs X)
     # Obiettivo: Vedere se chi è famoso posta di più

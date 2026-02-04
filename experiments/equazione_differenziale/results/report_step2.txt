@@ -3,7 +3,7 @@
     
     1. ASSUMPTION 1: LEGGE DI POTENZA (VIRALITÀ - Theta)
        -----------------------------------------------------
-       > Valore Theta Globale: 0.5750
+       > Valore Theta Globale: 0.4390
        > Metodo: Regressione Lineare su scala Log-Log (binning su 50 fasce).
        > Significato: Rappresenta l'esponente della relazione E[V] ~ X^theta.
        > Interpretazione Tesi:
@@ -16,7 +16,7 @@
        -----------------------------------------------------
        > Verifica Distribuzione: Vedi grafico 'step2_2_lognormal_check.png'.
          (Se la curva rossa fitta l'istogramma, il rumore è moltiplicativo/Lognormale).
-       > Merito Medio (Beta Pulito): 35.2009
+       > Merito Medio (Beta Pulito): 98.1143
        > Metodo: Calcolato per ogni post con la formula inversa:
          Beta_i = V_reale / (Popolarità_pregressa ^ Theta)
        > Significato:
@@ -25,8 +25,8 @@
 
     3. ASSUMPTION 3: DINAMICA DI POSTING (ATTIVITÀ - Lambda)
        -----------------------------------------------------
-       > Modello fittato: Lambda(X) = 20.42 + -18.67 * X^-0.35
-       > Parametro Chiave Phi (Reattività): -0.3532
+       > Modello fittato: Lambda(X) = 15.31 + -18.40 * X^-0.87
+       > Parametro Chiave Phi (Reattività): -0.8672
        > Interpretazione Tesi:
          - Se Phi ~ 0: L'attività è costante (Processo di Poisson omogeneo).
            La popolarità non influenza quanto spesso un utente posta.
@@ -36,9 +36,9 @@
     4. DATASET FINALE
        -----------------------------------------------------
        Parametri individuali salvati in:
-       /home/students/s332085/Tesi/experiments/replica_paper/data/user_parameters_estimated.csv
+       /home/students/s332085/Tesi/experiments/equazione_differenziale/data/user_parameters_estimated.csv
        
-       Contiene per ogni utente (86322 totali):
+       Contiene per ogni utente (29452 totali):
        - beta_merit: La qualità media stimata dell'utente.
        - n_posts_analyzed: Su quanti post è basata la stima.
     

@@ -1,4 +1,4 @@
-# Tesi / experiments / equazion_differenziale / step_1 / a_preprocessing.py
+# Tesi / experiments / equazion_differenziale / steps / 1a_preprocessing.py
 
 
 

@@ -1,5 +1,3 @@
-# Tesi / experiments / replica_paper / analisi_campione_30k / overview_dataset.py
-
 import json
 import gzip
 import os
@@ -16,12 +14,11 @@ from datetime import datetime
 # --- CONFIGURAZIONE ---
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_DATASET = os.path.abspath(os.path.join(CURRENT_DIR, "../../../data_collection/data/dataset_definitivo_6mesi.jsonl.gz"))
-
-OUTPUT_DIR = os.path.join(CURRENT_DIR, "results_overview")
+OUTPUT_DIR = os.path.join(CURRENT_DIR)
 OUTPUT_REPORT = os.path.join(OUTPUT_DIR, "report_overview.txt")
 
 API_LIMIT = 4320
-SATURATION_THRESHOLD = 4300 # Soglia per considerare un utente "Saturo"
+SATURATION_THRESHOLD = 4300 
 LOG_INTERVAL_SECONDS = 10 
 
 def get_ram_usage():
@@ -32,7 +29,7 @@ def get_ram_usage():
         return "N/A"
 
 def main():
-    print("--- OVERVIEW DATASET (BIAS ANALYSIS TIMELINE) ---")
+    print("--- OVERVIEW DATASET (FULL BIAS CHECK) ---")
     print(f"🕒 Inizio: {datetime.now().strftime('%H:%M:%S')}")
     
     if not os.path.exists(INPUT_DATASET):
@@ -41,17 +38,15 @@ def main():
 
     file_size_bytes = os.path.getsize(INPUT_DATASET)
     print(f"📦 Dimensione File: {file_size_bytes / (1024*1024):.2f} MB")
-    
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # --- STRUTTURE DATI ---
+    # user_metrics: Totali per utente (per identificare i saturi alla fine)
     user_metrics = {}      
-    daily_volume = Counter()       # Totale Post per Giorno
     
-    # IMPORTANTE: Teniamo traccia di CHI ha postato in ogni data
-    # daily_users: { '2024-01-01': set('did1', 'did2'...), ... }
-    # Usiamo un defaultdict(set) che è efficiente
-    daily_users = defaultdict(set)
+    # daily_counts: { '2024-01-01': { 'did_A': 5, 'did_B': 10 } }
+    # Serve per calcolare a posteriori il volume separato tra saturi e normali
+    daily_counts = defaultdict(lambda: defaultdict(int))
     
     langs_volume = Counter() 
     total_posts_read = 0
@@ -63,205 +58,174 @@ def main():
     try:
         with open(INPUT_DATASET, 'rb') as raw_f:
             with gzip.open(raw_f, 'rt', encoding='utf-8') as f:
-                
                 for line in f:
                     try:
                         data = json.loads(line)
                         total_posts_read += 1
                         
-                        # --- ESTRAZIONE DATI ---
-                        did = None
-                        if 'author' in data and 'did' in data['author']:
-                            did = data['author']['did']
-                        elif 'did' in data:
-                            did = data['did']
-                        
+                        # Estrazione Dati Base
+                        did = data.get('did') or data.get('author', {}).get('did')
                         likes = data.get('like_count', 0)
-                        
-                        date_str = None
-                        if 'created_at' in data:
-                            date_str = data['created_at'][:10]
-                        elif 'record' in data and 'created_at' in data['record']:
-                            date_str = data['record']['created_at'][:10]
-                            
-                        langs = []
-                        if 'record' in data and 'langs' in data['record']:
-                            langs = data['record']['langs']
-                        elif 'langs' in data:
-                            langs = data['langs']
+                        created_at = data.get('created_at') or data.get('record', {}).get('created_at', "")
+                        date_str = created_at[:10]
+                        langs = data.get('langs') or data.get('record', {}).get('langs', [])
 
-                        # --- AGGIORNAMENTO ---
+                        # Aggiornamento Metriche
                         if did:
+                            # 1. Totali Utente
                             if did not in user_metrics:
                                 user_metrics[did] = {'posts': 0, 'likes': 0}
                             user_metrics[did]['posts'] += 1
                             user_metrics[did]['likes'] += likes
                             
-                            # Memorizziamo il DID nel giorno specifico
+                            # 2. Dettaglio Giornaliero (Fondamentale per il grafico 3)
                             if date_str:
-                                daily_users[date_str].add(did)
+                                daily_counts[date_str][did] += 1
                         
-                        if date_str:
-                            daily_volume[date_str] += 1
-                            
-                        if langs:
+                        if isinstance(langs, list):
                             for l in langs:
                                 langs_volume[l] += 1
 
-                        # --- LOGGING ---
+                        # Logging
                         current_time = time.time()
                         if current_time - last_print_time > LOG_INTERVAL_SECONDS:
                             current_bytes = raw_f.tell()
                             perc = (current_bytes / file_size_bytes) * 100
-                            unique_users = len(user_metrics)
-                            speed = total_posts_read / (current_time - start_time)
-                            
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] "
-                                  f"Progress: {perc:.1f}% | "
-                                  f"Post: {total_posts_read:,} | "
-                                  f"Utenti: {unique_users:,} | "
-                                  f"RAM: {get_ram_usage()}", flush=True)
-                            
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] Progress: {perc:.1f}% | Post: {total_posts_read:,} | RAM: {get_ram_usage()}", flush=True)
                             last_print_time = current_time
 
                     except Exception:
                         continue
-                    
+                        
     except Exception as e:
         print(f"\n❌ Errore critico: {e}")
         sys.exit(1)
 
-    print(f"\n✅ Lettura completata. Analisi Bias Temporale...")
-    
-    df = pd.DataFrame.from_dict(user_metrics, orient='index')
-    df.fillna(0, inplace=True)
+    print(f"\n✅ Lettura completata. Analisi Struttura...")
+    df = pd.DataFrame.from_dict(user_metrics, orient='index').fillna(0)
     total_users = len(df)
     
-    # IDENTIFICHIAMO GLI UTENTI SATURI (POWER USERS)
-    # Creiamo un SET per accesso veloce O(1)
+    # Identificazione Power Users
     saturated_dids = set(df[df['posts'] >= SATURATION_THRESHOLD].index)
-    print(f"⚠️ Utenti Saturi (Truncated History): {len(saturated_dids)}")
+    print(f"⚠️ Utenti Saturi identificati: {len(saturated_dids)}")
 
+    # --- GENERAZIONE GRAFICI ---
     print("📊 Generazione Grafici...")
 
-    # =========================================================================
-    # 1. ISTOGRAMMA POST
-    # =========================================================================
+    # 1. ISTOGRAMMA
     plt.figure(figsize=(10, 6))
     sns.histplot(data=df, x='posts', bins=50, color='royalblue', kde=False)
     plt.axvline(x=API_LIMIT, color='red', linestyle='--', label=f'Limite API ({API_LIMIT})')
     plt.yscale('log')
     plt.title(f"Distribuzione Post per Utente (Tot: {total_users})")
-    plt.xlabel("Numero Post")
-    plt.ylabel("Numero Utenti (Log)")
     plt.legend()
     plt.savefig(os.path.join(OUTPUT_DIR, "1_distribuzione_post.png"))
     plt.close()
 
-    # =========================================================================
     # 2. BOXPLOT
-    # =========================================================================
-    plt.figure(figsize=(12, 4))
+    plt.figure(figsize=(12, 5))
     sns.boxplot(x=df['posts'], color='orange', flierprops={"marker": "x", "markersize": 2})
-    plt.axvline(x=API_LIMIT, color='red', linestyle='--')
+    plt.axvline(x=API_LIMIT, color='red', linestyle='--', linewidth=2)
+    plt.text(API_LIMIT + 50, -0.35, f'Soglia API ({API_LIMIT})', color='red', fontweight='bold')
     plt.title("Boxplot Attività Utenti")
-    plt.xlabel("Numero Post")
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, "2_boxplot_post.png"))
     plt.close()
 
     # =========================================================================
-    # 3. TIMELINE SPLIT (BIAS ANALYSIS)
+    # 3. TIMELINE BIAS CHECK (AVANZATO)
     # =========================================================================
-    # Qui avviene la magia: separiamo i conteggi per giorno
+    print("   ↳ Elaborazione Timeline Bias...")
+    
+    # A. Calcoliamo la "Data di Nascita nel Dataset" per i Power User (Coverage)
+    # Serve per la linea ROSSA (Disponibilità Dati)
+    pu_first_date = {}
+    for d, user_counts in daily_counts.items():
+        if not d.startswith("202"): continue
+        for did in user_counts:
+            if did in saturated_dids:
+                if did not in pu_first_date or d < pu_first_date[did]:
+                    pu_first_date[did] = d
+
     timeline_data = []
-    all_dates = sorted(daily_users.keys())
+    all_dates = sorted([d for d in daily_counts.keys() if d.startswith("202")])
     
     for d in all_dates:
-        if not d.startswith("202"): continue # Skip date errate
+        day_users = daily_counts[d]
         
-        users_today = daily_users[d] # Set di DID attivi oggi
+        # 1. Volume totale del giorno (Barre Grigie)
+        vol_total = sum(day_users.values())
         
-        # Intersezione: Quanti sono saturi? Quanti no?
-        count_saturated = 0
-        count_normal = 0
+        # 2. Volume generato dai NON SATURI (Linea Verde)
+        # Sommiamo i post fatti oggi solo dai DID che NON sono nel set saturated_dids
+        vol_normal_users = sum(cnt for did, cnt in day_users.items() if did not in saturated_dids)
         
-        for did in users_today:
-            if did in saturated_dids:
-                count_saturated += 1
-            else:
-                count_normal += 1
+        # 3. Copertura Power Users (Linea Rossa)
+        # Quanti Power User hanno dati che coprono questa data (data <= d)?
+        pu_coverage = sum(1 for first_d in pu_first_date.values() if first_d <= d)
         
         timeline_data.append({
-            'date': d,
-            'active_saturated': count_saturated,
-            'active_normal': count_normal,
-            'total_volume': daily_volume[d]
+            'date': pd.to_datetime(d),
+            'total_volume': vol_total,
+            'normal_users_volume': vol_normal_users,
+            'power_users_coverage': pu_coverage
         })
     
-    df_time = pd.DataFrame(timeline_data)
-    df_time['date'] = pd.to_datetime(df_time['date'])
-    df_time.sort_values('date', inplace=True)
-    
-    # Medie mobili per pulizia visiva
-    df_time['norm_ma7'] = df_time['active_normal'].rolling(7).mean()
-    df_time['sat_ma7'] = df_time['active_saturated'].rolling(7).mean()
+    df_time = pd.DataFrame(timeline_data).sort_values('date')
 
     if not df_time.empty:
         fig, ax1 = plt.subplots(figsize=(15, 8))
-
-        # SFONDO: Volume Totale
-        ax1.bar(df_time['date'], df_time['total_volume'], color='lightgray', alpha=0.5, label='Volume Post Totale')
-        ax1.set_ylabel('Volume Post (Totale)', color='gray')
-        ax1.tick_params(axis='y', labelcolor='gray')
-
-        # PRIMO PIANO: Linee Utenti Attivi separate
+        
+        # ASSE SX: VOLUMI (Barre e Linea Verde)
+        # Barre Grigie: Volume Totale
+        ax1.bar(df_time['date'], df_time['total_volume'], color='lightgray', alpha=0.6, label='Volume Totale (Tutti)')
+        
+        # Linea Verde: Volume Utenti Normali (Control Group)
+        # Usiamo rolling(3) per smussare leggermente i picchi giornalieri
+        ax1.plot(df_time['date'], df_time['normal_users_volume'].rolling(3, min_periods=1).mean(), 
+                 color='green', linewidth=2.5, label='Volume Post: Utenti Non-Saturi')
+        
+        ax1.set_ylabel('Volume Post Giornaliero', color='black', fontweight='bold')
+        ax1.tick_params(axis='y', labelcolor='black')
+        
+        # ASSE DX: COPERTURA POWER USER (Linea Rossa)
         ax2 = ax1.twinx()
+        ax2.plot(df_time['date'], df_time['power_users_coverage'], 
+                 color='#e74c3c', linewidth=2, linestyle='--', label='Disponibilità Dati Power Users')
         
-        # Linea BLU: Utenti Normali (dovrebbe essere stabile)
-        ax2.plot(df_time['date'], df_time['norm_ma7'], color='#2ecc71', linewidth=2, label='Utenti Standard (Storia Completa)')
+        ax2.set_ylabel('N. Power Users Presenti nel Dataset', color='#e74c3c', fontweight='bold')
+        ax2.tick_params(axis='y', labelcolor='#e74c3c')
         
-        # Linea ROSSA: Utenti Saturi (dovrebbe crollare nel passato)
-        ax2.plot(df_time['date'], df_time['sat_ma7'], color='#e74c3c', linewidth=2, linestyle='--', label='Power Users (Storia Tronca)')
+        plt.title("Analisi Bias: Confronto Volume Utenti Normali vs Disponibilità Dati Power Users")
         
-        ax2.set_ylabel('Utenti Attivi Giornalieri (DAU)', color='black', fontweight='bold')
+        # Legenda Unica
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
         
-        # Aggiungiamo un'annotazione per spiegare il bias
-        max_sat = df_time['sat_ma7'].max()
-        mid_date = df_time.iloc[len(df_time)//2]['date']
-        
-        # Annotazione visuale sul grafico
-        ax2.text(mid_date, max_sat, "↓ Data Cut-off effect", color='#e74c3c', ha='center', fontweight='bold')
-
-        plt.title("Analisi Bias Temporale: Effetto del limite API sui dati storici")
-        
-        # Legenda Combinata
-        lines_1, labels_1 = ax1.get_legend_handles_labels()
-        lines_2, labels_2 = ax2.get_legend_handles_labels()
-        plt.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper left')
-        
-        ax1.grid(True, alpha=0.3)
+        plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.savefig(os.path.join(OUTPUT_DIR, "3_timeline_bias_check.png"))
         plt.close()
 
-    # =========================================================================
     # 4. SCATTER PLOT
-    # =========================================================================
-    plt.figure(figsize=(8, 8))
-    plot_data = df.sample(10000) if len(df) > 10000 else df
-    plt.scatter(plot_data['posts'], plot_data['likes'], alpha=0.3, s=10, c='purple')
+    plt.figure(figsize=(9, 9))
+    plot_data = df.sample(min(15000, len(df)))
+    plt.scatter(plot_data['posts'], plot_data['likes'], alpha=0.2, s=8, c='purple', label='Utenti')
+    clean_df = df[(df['posts'] > 0) & (df['likes'] > 0)]
+    if not clean_df.empty:
+        log_x, log_y = np.log10(clean_df['posts']), np.log10(clean_df['likes'])
+        m, q = np.polyfit(log_x, log_y, 1)
+        x_range = np.logspace(np.log10(clean_df['posts'].min()), np.log10(clean_df['posts'].max()), 100)
+        plt.plot(x_range, 10**(m * np.log10(x_range) + q), color='darkorange', linewidth=2, label=f'Trend (Slope: {m:.2f})')
     plt.xscale('log'); plt.yscale('log')
-    plt.xlabel("Post Pubblicati")
-    plt.ylabel("Like Totali Ricevuti")
+    plt.xlabel("Post (Log)"); plt.ylabel("Like (Log)")
     plt.title("Attività vs Popolarità")
-    plt.grid(True, which="both", alpha=0.2)
+    plt.legend(); plt.grid(True, which="both", alpha=0.15)
     plt.savefig(os.path.join(OUTPUT_DIR, "4_scatter.png"))
     plt.close()
 
-    # =========================================================================
     # 5. LINGUE
-    # =========================================================================
     top_langs = langs_volume.most_common(10)
     if top_langs:
         langs, l_counts = zip(*top_langs)
@@ -271,52 +235,11 @@ def main():
         plt.savefig(os.path.join(OUTPUT_DIR, "5_languages.png"))
         plt.close()
 
-    # --- REPORT FINALE ---
+    # REPORT
     stats = df['posts'].describe()
-    saturated = len(saturated_dids)
-    
-    top_10_users = df.nlargest(10, 'posts')
-    top_10_str = top_10_users[['posts', 'likes']].to_string()
-    
-    report = f"""
-    === REPORT ANALISI DATASET (CON BIAS CHECK) ===
-    Data Analisi: {datetime.now()}
-    
-    1. VOLUMETRIA
-       - Post Totali Letti: {total_posts_read:,}
-       - Utenti Unici: {total_users:,}
-       - Like Totali Distribuiti: {df['likes'].sum():,}
-    
-    2. ANALISI LIMITE API & BIAS
-       - Utenti Totali: {total_users}
-       - Utenti Saturi (Power Users >= {SATURATION_THRESHOLD}): {saturated}
-       - Percentuale Saturi: {saturated/total_users*100:.2f}%
-       
-       NOTA SUL GRAFICO 3 (Timeline):
-       Osserva la linea ROSSA tratteggiata. Se cala drasticamente andando indietro 
-       nel tempo, mentre la linea VERDE rimane stabile, è la conferma che il 
-       calo di volume storico è dovuto esclusivamente al limite di download 
-       dei Power Users.
-    
-    3. STATISTICHE ATTIVITÀ
-       - Media: {stats['mean']:.2f}
-       - Mediana: {stats['50%']:.0f}
-       - Max: {stats['max']:.0f}
-       
-    4. TOP 10 UTENTI PIÙ ATTIVI
-    {top_10_str}
-
-    5. TOP LINGUE
-       {top_langs}
-       
-    Grafici salvati in: {OUTPUT_DIR}
-    """
-    
-    with open(OUTPUT_REPORT, "w") as f:
-        f.write(report)
-        
+    report = f"Post Totali: {total_posts_read:,}\nUtenti: {total_users:,}\nSaturi: {len(saturated_dids)} ({len(saturated_dids)/total_users*100:.2f}%)\nMedia Post: {stats['mean']:.2f}\nTop 10 Lingue: {top_langs}"
+    with open(OUTPUT_REPORT, "w") as f: f.write(report)
     print(report)
-    print("✅ Tutto completato.")
 
 if __name__ == "__main__":
     main()

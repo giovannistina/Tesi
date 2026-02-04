@@ -1,0 +1,91 @@
+[33mcommit 0cb9db6f4fe9ffac0da450b219b7e948f9eb9a0d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Giovanni Stinà <giovanni.stina@gmail.com>
+Date:   Wed Feb 4 00:17:08 2026 +0100
+
+    Aggunta tutta la sezione sul calcolo dei  paraemtri dell'equazione differenziale del paper,  perfezionata la pipeline e i codici per scaricare il dataset completo dalle 3 finestre di 30 minuti e poi filtrarlo per 30k e su 6 mesi
+
+ data_collection/campionamento_utenti.py            |     91 [32m+[m
+ data_collection/cleaner.py                         |    105 [32m+[m[31m-[m
+ data_collection/crawl_6_months.py                  |    243 [32m+[m
+ data_collection/crawl_timelines_limited.py         |    146 [32m+[m[31m-[m
+ .../(2_ore)_session_log_2026-01-27_11-43-32.txt    |     12 [31m-[m
+ data_collection/data/1.txt                         |   4204 [31m-[m
+ data_collection/data/11.txt                        | 126334 [32m++++[m
+ data_collection/data/12.txt                        |  65556 [32m++[m
+ data_collection/data/13.txt                        |  81742 [32m++[m
+ data_collection/data/14.txt                        |  98979 [32m+++[m
+ data_collection/data/2.txt                         |  13441 [31m-[m
+ .../data/{(2_ore)_1.txt => all_users.txt}          | 709751 [32m+++++++++[m[31m---------[m
+ ...h_2026-01-27_11-43-37.txt => all_users_1-4.txt} | 636310 [32m++++++++[m[31m--------[m
+ data_collection/data/batch_2026-01-27_14-57-41.txt |   4204 [31m-[m
+ data_collection/data/batch_2026-01-31_20-50-05.txt | 105744 [32m+++[m
+ data_collection/data/batch_2026-02-01_00-30-05.txt | 126334 [32m++++[m
+ data_collection/data/batch_2026-02-01_06-30-05.txt |  80042 [32m++[m
+ data_collection/data/batch_2026-02-01_12-30-06.txt | 103953 [32m+++[m
+ data_collection/data/batch_2026-02-01_18-30-05.txt | 147050 [32m++++[m
+ data_collection/data/chunk_0.txt                   |   7500 [32m+[m
+ data_collection/data/chunk_1.txt                   |   7500 [32m+[m
+ data_collection/data/chunk_1/grafico_boxplot.png   |    Bin [31m17529[m -> [32m0[m bytes
+ .../data/chunk_1/grafico_istogramma.png            |    Bin [31m26567[m -> [32m0[m bytes
+ .../data/chunk_1/report_statistiche.txt            |     49 [31m-[m
+ .../data/{ => chunk_1_old}/calcolo_metriche.py     |      0
+ .../data/{ => chunk_1_old}/create_session.py       |      0
+ .../data/chunk_1_old/dati_profili_completi.json    |  23882 [32m+[m
+ .../data/{ => chunk_1_old}/genera_struttura.py     |      0
+ .../data/{ => chunk_1_old}/grafico_boxplot.png     |    Bin
+ .../data/{ => chunk_1_old}/grafico_istogramma.png  |    Bin
+ .../{ => chunk_1_old}/grafico_istogramma_post.png  |    Bin
+ .../{ => chunk_1_old}/grafico_scatter_fama.png     |    Bin
+ .../{ => chunk_1_old}/grafico_torta_tipologia.png  |    Bin
+ .../data/{ => chunk_1_old}/merged_dataset.py       |      0
+ .../data/{ => chunk_1_old}/report_statistiche.txt  |      0
+ .../report_statistiche_completo.txt                |      0
+ .../data/{ => chunk_1_old}/scarica_followers.py    |      0
+ .../struttura_dati_merged_spiegata.txt             |      0
+ .../struttura_dati_spiegata.txt                    |      0
+ data_collection/data/chunk_2.txt                   |   7499 [32m+[m
+ data_collection/data/chunk_3.txt                   |   7499 [32m+[m
+ data_collection/data/lista_did_30k.txt             |  29998 [32m+[m
+ data_collection/data/report_campionamento.txt      |     28 [32m+[m
+ .../data/session_log_2026-01-27_11-21-42.txt       |     11 [31m-[m
+ .../data/session_log_2026-01-27_14-57-36.txt       |     16 [31m-[m
+ .../data/struttura_dataset_completa.txt            |     19 [32m+[m
+ data_collection/filtro.py                          |     86 [32m+[m
+ data_collection/merge_dataset.py                   |    172 [32m+[m[31m-[m
+ data_collection/merge_dataset_6m.py                |    150 [32m+[m
+ data_collection/mescola_utenti.py                  |     39 [32m+[m
+ data_collection/orchestrator_new.py                |    153 [32m+[m
+ data_collection/scarica_followers.py               |    211 [32m+[m[31m-[m
+ data_collection/unisci_utenti.py                   |      2 [32m+[m[31m-[m
+ experiments/analisi_popolazione.py                 |    173 [32m+[m
+ .../analisi_campione_30k/1_distribuzione_post.png  |    Bin [31m0[m -> [32m28038[m bytes
+ .../analisi_campione_30k/2_boxplot_post.png        |    Bin [31m0[m -> [32m13452[m bytes
+ .../analisi_campione_30k/3_timeline_bias_check.png |    Bin [31m0[m -> [32m85190[m bytes
+ .../analisi_campione_30k/4_scatter.png             |    Bin [31m0[m -> [32m189868[m bytes
+ .../analisi_campione_30k/5_languages.png           |    Bin [31m0[m -> [32m12392[m bytes
+ .../analisi_campione_30k/overview_dataset.py       |    322 [32m+[m
+ .../analisi_campione_30k/report_overview.txt       |     43 [32m+[m
+ .../data/events_enriched.csv.gz                    |    Bin [31m0[m -> [32m244660017[m bytes
+ .../equazione_differenziale/data/events_log.csv.gz |    Bin [31m0[m -> [32m407041889[m bytes
+ .../equazione_differenziale/data/user_metrics.csv  | 118666 [32m+++[m
+ .../data/user_parameters_estimated.csv             |  86323 [32m+++[m
+ .../equazione_differenziale/inspect_structure.py   |     50 [32m+[m
+ .../equazione_differenziale/pipeline_global.py     |    105 [32m+[m
+ .../figures/1a_distribuzione_popolarita.png        |    Bin [31m0[m -> [32m37272[m bytes
+ .../results/figures/1b_fitting_theta.png           |    Bin [31m0[m -> [32m41911[m bytes
+ .../results/figures/1c_scatter_beta_X.png          |    Bin [31m0[m -> [32m220370[m bytes
+ .../results/figures/1d_scatter_lambda_X.png        |    Bin [31m0[m -> [32m213804[m bytes
+ .../results/figures/2a_assumption1_theta.png       |    Bin [31m0[m -> [32m47647[m bytes
+ .../results/figures/2b_assumption2_lognormal.png   |    Bin [31m0[m -> [32m40791[m bytes
+ .../results/figures/2c_assumption3_activity.png    |    Bin [31m0[m -> [32m38990[m bytes
+ .../results/figures/3a_fairness_scatter.png        |    Bin [31m0[m -> [32m209296[m bytes
+ .../results/figures/3b_topk_overlap.png            |    Bin [31m0[m -> [32m43306[m bytes
+ .../results/report_step1.txt                       |     38 [32m+[m
+ .../results/report_step2.txt                       |     44 [32m+[m
+ .../results/report_step3.txt                       |     24 [32m+[m
+ .../steps/1a_preprocessing.py                      |    175 [32m+[m
+ .../equazione_differenziale/steps/1b_compute_Xt.py |    160 [32m+[m
+ .../equazione_differenziale/steps/1c_analysis.py   |    246 [32m+[m
+ .../steps/2a_parameter_estimation.py               |    228 [32m+[m
+ .../steps/3a_fairness_analysis.py                  |    164 [32m+[m
+ 84 files changed, 1898829 insertions(+), 696987 deletions(-)

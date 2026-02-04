@@ -1,0 +1,28 @@
+RECAP CAMPIONAMENTO UTENTI - 03/02/2026 01:34
+============================================================
+METODOLOGIA DI CALCOLO:
+1. Metrica: Engagement Medio (Somma Like, Repost, Commenti / Numero Post).
+2. Normalizzazione: Trasformazione Logaritmica [log(1+x)] applicata all'engagement
+   per correggere la forte asimmetria (Power Law) della distribuzione social.
+3. Clustering: Algoritmo K-Means (k=3) per identificare i confini naturali
+   tra le classi di utenti (Low, Medium, High engagement).
+4. Campionamento: Stratificato Proporzionale. Il campione target di 30.000 utenti
+   mantiene le stesse percentuali di rappresentazione della popolazione reale.
+============================================================
+
+--- STATISTICHE POPOLAZIONE TOTALE (CANDIDATI) ---
+        count        min           max        mean
+Tier                                              
+Low     54775   0.001389      3.411765    1.437290
+Medium  22272   3.412121     33.647059    9.233105
+High     4977  33.658768  40174.352110  504.082122
+Totale utenti idonei: 82024
+
+--- STATISTICHE CAMPIONE SELEZIONATO (OUTPUT) ---
+        count        min           max        mean
+Tier                                              
+Low     20033   0.001389      3.411765    1.433484
+Medium   8145   3.412639     33.642857    9.353020
+High     1820  33.666667  36332.933071  496.939122
+Totale utenti campionati: 29998
+============================================================

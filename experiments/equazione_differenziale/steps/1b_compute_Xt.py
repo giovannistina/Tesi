@@ -1,4 +1,4 @@
-# Tesi / experiments / equazione_differenziale / step_1 / b_compute_Xt.py
+# Tesi / experiments / equazione_differenziale / steps / 1b_compute_Xt.py
 
 import pandas as pd
 import numpy as np
