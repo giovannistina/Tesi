@@ -2,23 +2,22 @@
     === REPORT STEP 3: FAIRNESS E DOMINANZA ===
     
     1. ANALISI CORRELAZIONE (EFFICIENZA DI MERCATO)
-       Utenti analizzati: 28507
+       Utenti analizzati (Creators > 5 post): 28442
        
-       - Kendall Tau: 0.3198
-         * Se vicino a 1.0: Il sistema è meritocratico (i migliori emergono sempre).
-         * Se vicino a 0.0: Il successo è casuale o dominato solo dal 'Rich-get-Richer'.
-         * Confronto paper (es. Facebook): Di solito è intorno a 0.4 - 0.6.
+       - Kendall Tau: 0.3200
+         * Se vicino a 1.0: Il sistema è meritocratico.
+         * Se vicino a 0.0: Il successo è scollegato dalla qualità.
+         * Nota: Su Facebook (Paper originale) era ~0.55.
        
-       - Pearson Correlation (Log-Log): 0.4907
-         Indica quanto la popolarità scala con la qualità.
+       - Pearson (Log-Log): 0.4914
 
     2. ANALISI TOP-RANK (ELITE)
        Quanto spesso i "Migliori" sono anche i "Più Famosi"?
        
-       - Top 100: 0.0% di sovrapposizione.
-       - Top 1000: 0.0% di sovrapposizione.
+       - Top 100 Overlap: 0.0%
+       - Top 1000 Overlap: 0.0%
        
        Interpretazione:
-       Se questa percentuale è bassa (es. < 20%), significa che l'élite della piattaforma 
-       non è composta dai creatori di contenuti migliori, ma da chi è arrivato prima.
+       Se l'overlap è basso nella Top 100, significa che l'élite di Bluesky
+       è formata da "Early Adopters" o celebrità esterne, non dai migliori creatori interni.
     

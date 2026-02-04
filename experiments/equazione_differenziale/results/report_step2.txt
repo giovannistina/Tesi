@@ -1,44 +1,18 @@
 
-    === REPORT STEP 2: STIMA PARAMETRI (DETTAGLIATO) ===
+    === REPORT STEP 2: STIMA PARAMETRI (MODELLO LOGNORMALE) ===
     
-    1. ASSUMPTION 1: LEGGE DI POTENZA (VIRALITÀ - Theta)
-       -----------------------------------------------------
-       > Valore Theta Globale: 0.4390
-       > Metodo: Regressione Lineare su scala Log-Log (binning su 50 fasce).
-       > Significato: Rappresenta l'esponente della relazione E[V] ~ X^theta.
-       > Interpretazione Tesi:
-         - Se Theta < 1.0: Il sistema tende all'Equilibrio (Fair Play).
-           Il vantaggio di essere famosi cresce meno che proporzionalmente.
-         - Se Theta >= 1.0: Il sistema tende al Monopolio (Dominanza).
-           Effetto "Rich-get-Richer" esplosivo.
+    1. THETA (VIRALITÀ)
+       Theta: 0.4390
+       Calcolato su post originali.
 
-    2. ASSUMPTION 2: QUALITÀ INTRINSECA (MERITO - Beta)
-       -----------------------------------------------------
-       > Verifica Distribuzione: Vedi grafico 'step2_2_lognormal_check.png'.
-         (Se la curva rossa fitta l'istogramma, il rumore è moltiplicativo/Lognormale).
-       > Merito Medio (Beta Pulito): 98.1143
-       > Metodo: Calcolato per ogni post con la formula inversa:
-         Beta_i = V_reale / (Popolarità_pregressa ^ Theta)
-       > Significato:
-         È la capacità "pura" dell'utente di generare like,
-         depurata dal vantaggio di avere già follower/visibilità.
-
-    3. ASSUMPTION 3: DINAMICA DI POSTING (ATTIVITÀ - Lambda)
-       -----------------------------------------------------
-       > Modello fittato: Lambda(X) = 15.31 + -18.40 * X^-0.87
-       > Parametro Chiave Phi (Reattività): -0.8672
-       > Interpretazione Tesi:
-         - Se Phi ~ 0: L'attività è costante (Processo di Poisson omogeneo).
-           La popolarità non influenza quanto spesso un utente posta.
-         - Se Phi > 0: Processo "Self-Exciting".
-           Diventare popolari incentiva l'utente a postare molto di più.
-    
-    4. DATASET FINALE
-       -----------------------------------------------------
-       Parametri individuali salvati in:
-       /home/students/s332085/Tesi/experiments/equazione_differenziale/data/user_parameters_estimated.csv
+    2. BETA (MERITO)
+       Modello scelto: Lognormale (Coerenza con letteratura)
+       Mu (Log-mean): -0.6253
+       Sigma (Log-std): 2.5685
        
-       Contiene per ogni utente (29452 totali):
-       - beta_merit: La qualità media stimata dell'utente.
-       - n_posts_analyzed: Su quanti post è basata la stima.
+       Nota: La scelta della Lognormale è conservativa per confronto con Paper precedenti,
+       nonostante la coda mostri tratti di Pareto.
+
+    3. LAMBDA (ATTIVITÀ)
+       Phi (Reattività): -0.7356
     
