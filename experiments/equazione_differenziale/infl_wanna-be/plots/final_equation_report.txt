@@ -4,13 +4,11 @@ GRUPPO: INFLUENCER
   Gamma (Esponente del Rumore): 0.360
   Sigma Base (Coefficiente):    18.613
   R^2 (Log-Log Fit):            0.251
-  -> MODELLO SUGGERITO: Modello Ibrido / Complesso
   -> EQUAZIONE: dX_t = 0.08(1329 - X_t)dt + 18.61 X_t^{0.36} dW_t
 ----------------------------------------
 GRUPPO: WANNABE
   Gamma (Esponente del Rumore): 0.361
   Sigma Base (Coefficiente):    2.980
   R^2 (Log-Log Fit):            0.171
-  -> MODELLO SUGGERITO: Modello Ibrido / Complesso
   -> EQUAZIONE: dX_t = 0.12(69 - X_t)dt + 2.98 X_t^{0.36} dW_t
 ----------------------------------------
