@@ -1,0 +1,48 @@
+=== REPORT UTENTI SELEZIONATI PER GRAFICO MICRO-DINAMICA ===
+
+
+Gruppo: INFLUENCER
+------------------------------------------------------------
+DID:       did:plc:vdrvx5awiubogohbgnod3jda
+Followers: 19877
+Link:      https://bsky.app/profile/did:plc:vdrvx5awiubogohbgnod3jda
+------------------------------
+DID:       did:plc:rjdfeeu7quv5j56b5tdlo6ej
+Followers: 20339
+Link:      https://bsky.app/profile/did:plc:rjdfeeu7quv5j56b5tdlo6ej
+------------------------------
+DID:       did:plc:s6yp6jam5og3tftozaw7pjth
+Followers: 26736
+Link:      https://bsky.app/profile/did:plc:s6yp6jam5og3tftozaw7pjth
+------------------------------
+DID:       did:plc:hyssmvj5d4tudue4ali4qotd
+Followers: 36867
+Link:      https://bsky.app/profile/did:plc:hyssmvj5d4tudue4ali4qotd
+------------------------------
+DID:       did:plc:h2izvxjzgsd5sp7cta6adfai
+Followers: 37416
+Link:      https://bsky.app/profile/did:plc:h2izvxjzgsd5sp7cta6adfai
+------------------------------
+
+Gruppo: WANNABE
+------------------------------------------------------------
+DID:       did:plc:6xncussllgudwbysc42f4j7j
+Followers: 1263
+Link:      https://bsky.app/profile/did:plc:6xncussllgudwbysc42f4j7j
+------------------------------
+DID:       did:plc:csfq6povtjtn3k4wntblyf6f
+Followers: 830
+Link:      https://bsky.app/profile/did:plc:csfq6povtjtn3k4wntblyf6f
+------------------------------
+DID:       did:plc:554zdhjtxuvkzwqluagrkp6e
+Followers: 3518
+Link:      https://bsky.app/profile/did:plc:554zdhjtxuvkzwqluagrkp6e
+------------------------------
+DID:       did:plc:6pistigjznfwue2bfyipzlbf
+Followers: 648
+Link:      https://bsky.app/profile/did:plc:6pistigjznfwue2bfyipzlbf
+------------------------------
+DID:       did:plc:in3g6t7jtfy4araapnodnqhy
+Followers: 722
+Link:      https://bsky.app/profile/did:plc:in3g6t7jtfy4araapnodnqhy
+------------------------------

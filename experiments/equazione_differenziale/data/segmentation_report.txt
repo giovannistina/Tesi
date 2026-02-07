@@ -1,0 +1,61 @@
+=== REPORT SEGMENTAZIONE UTENTI (LOGICA CORRETTA) ===
+Data: 2026-02-06 18:00:51.550734
+
+👥 Utenti totali nel DB: 29453
+📉 Utenti attivi : 29388 (>5 post validi, altrimenti non si possono considerare influencer o wanna-be)
+
+--- SOGLIE CALCOLATE ---
+👑 SOGLIA ELITE (Top 1%): > 19,526 followers
+🏃 FASCIA WANNABE (50% - 99%): tra 320 e 19,526 followers
+❤️ SOGLIA VITALITÀ (Like Medi): > 3.18
+
+--- DISTRIBUZIONE GRUPPI ---
+group
+OTHER         14757
+WANNABE       14402
+INFLUENCER      282
+ZOMBIE           12
+
+================================================================================
+   ISPEZIONE CAMPIONI (TOP 5 PER CATEGORIA)
+================================================================================
+
+📂 CATEGORIA: INFLUENCER
+---------------------------------------------------------------------
+DID                                 | Followers  | Avg Likes  | Post 
+---------------------------------------------------------------------
+did:plc:eclio37ymobqex2ncko63h4r    | 1,283,556  | 219.30     | 2265 
+did:plc:mtr3pwmbnirvyp3robuicd57    | 320,844    | 900.65     | 997  
+did:plc:lzlqyldh7nfc34pfffvd24ko    | 306,621    | 926.46     | 1331 
+did:plc:flfa7b6kgjqp3bbh223tmpjk    | 299,958    | 681.68     | 1844 
+did:plc:wuhkj7cjrak4zghdgunoprur    | 273,023    | 1361.62    | 104  
+
+📂 CATEGORIA: ZOMBIE
+---------------------------------------------------------------------
+DID                                 | Followers  | Avg Likes  | Post 
+---------------------------------------------------------------------
+did:plc:f5h6t3h4sqy77wdwylyzvpfg    | 34,936     | 2.25       | 208  
+did:plc:vjzvgcmeqk4ahsat2o3xymoy    | 28,452     | 2.95       | 837  
+did:plc:jr47aeyvm642bqqohgsaphb4    | 25,544     | 2.17       | 1021 
+did:plc:j5itcajzspjeqsnnkgj2zsyx    | 24,039     | 3.01       | 2752 
+did:plc:mf4564uk2rjg47utofwbjazp    | 22,328     | 2.98       | 348  
+
+📂 CATEGORIA: WANNABE
+---------------------------------------------------------------------
+DID                                 | Followers  | Avg Likes  | Post 
+---------------------------------------------------------------------
+did:plc:xwmkkvrfresrawavqskpkfut    | 19,525     | 346.75     | 51   
+did:plc:mjglqonnpnqrjjw4itig4ids    | 19,309     | 3.11       | 1150 
+did:plc:kykap6cwhlj5hhqiul7lpcae    | 19,300     | 20.45      | 342  
+did:plc:yzk65g67jjun6ml2n3bewfwl    | 19,283     | 6.41       | 1360 
+did:plc:zhtyb2asfnfjtgzmhduta32t    | 19,252     | 20.56      | 2998 
+
+📂 CATEGORIA: OTHER
+---------------------------------------------------------------------
+DID                                 | Followers  | Avg Likes  | Post 
+---------------------------------------------------------------------
+did:plc:xnjfug36cdp6m3cm5iaw2ilw    | 10,103     | 50.33      | 3    
+did:plc:ufkguhjn2uozinpn6oldehgg    | 6,242      | 107.25     | 4    
+did:plc:suo6syfv24setb2rr62bmuop    | 4,711      | 1.00       | 1    
+did:plc:qls76iqdy4z3uwy7pgyga2y7    | 2,880      | 5.00       | 2    
+did:plc:f5ihh3hqlsl4kkd5b4a52nqv    | 1,765      | 3.00       | 2    

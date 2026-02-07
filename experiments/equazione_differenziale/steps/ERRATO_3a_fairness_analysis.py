@@ -3,7 +3,6 @@
 
 
 
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,25 +30,31 @@ def main():
         print("❌ Errore: Mancano i file di input (Esegui Step 1 e 2).")
         sys.exit(1)
 
-    df_metrics = pd.read_csv(INPUT_METRICS) # Contiene mean_X (Popolarità) e lambda
-    df_params = pd.read_csv(INPUT_PARAMS)   # Contiene beta_merit (Qualità) e n_posts_analyzed
+    # Carichiamo i CSV
+    df_metrics = pd.read_csv(INPUT_METRICS) # Contiene mean_X (Popolarità)
+    df_params = pd.read_csv(INPUT_PARAMS)   # Contiene beta_merit, n_posts_analyzed (ORIGINALI)
 
     # Uniamo i dataset usando il 'did' (User ID)
+    # Usiamo 'inner' join: teniamo solo utenti presenti in entrambi i file
     df = pd.merge(df_metrics, df_params, on='did', how='inner')
     
-    print(f"👥 Utenti totali (incrocio Step 1 & 2): {len(df)}")
+    print(f"📥 Utenti totali (Merge Step 1 & 2): {len(df)}")
     
     # =========================================================================
     # FILTRO ATTIVITÀ
     # =========================================================================
-    # Consideriamo solo CREATORS stabili (> 5 post originali)
+    # Consideriamo solo CREATORS stabili (> 5 post originali).
+    # n_posts_analyzed viene dallo step 2a e conta solo i post originali.
     MIN_POSTS = 5
+    
+    # Filtriamo anche per popolarità minima per evitare rumore di fondo
     df_active = df[(df['n_posts_analyzed'] >= MIN_POSTS) & (df['mean_X'] > 1.0)].copy()
     
-    # Rimuoviamo eventuali NaN
+    # Pulizia NaN
     df_active = df_active.dropna(subset=['beta_merit', 'mean_X'])
     
     print(f"👥 Utenti validi per Fairness (> {MIN_POSTS} post originali): {len(df_active)}")
+    print(f"   (Esclusi {len(df) - len(df_active)} utenti poco attivi o solo-reposter)")
 
     os.makedirs(OUTPUT_DIR_IMGS, exist_ok=True)
 
@@ -58,33 +63,35 @@ def main():
     # =========================================================================
     print("\n⚖️  1. Calcolo Correlazioni (Meritocrazia)...")
     
-    # Logaritmi per Pearson
+    # Logaritmi per Pearson (la qualità varia su ordini di grandezza)
     log_beta = np.log1p(df_active['beta_merit'])
     log_X = np.log1p(df_active['mean_X'])
 
     # Pearson: Correlazione lineare sui logaritmi
     pearson_corr, _ = pearsonr(log_beta, log_X)
     
-    # Spearman: Correlazione di rango
+    # Spearman: Correlazione di rango (non parametrica)
     spearman_corr, _ = spearmanr(df_active['beta_merit'], df_active['mean_X'])
 
     # Kendall Tau: La misura più robusta per le classifiche
+    # Ci dice: "Se l'utente A è più bravo di B, è anche più famoso di B?"
     tau, _ = kendalltau(df_active['beta_merit'], df_active['mean_X'])
 
     print(f"   🔹 Pearson (Log-Log): {pearson_corr:.4f}")
     print(f"   🔹 Spearman Rank:     {spearman_corr:.4f}")
     print(f"   🔹 Kendall Tau:       {tau:.4f} (Indice principale di Fairness)")
 
-    # Grafico A: Scatter Classico (Valori)
+    # Grafico A: Scatter Classico (Valori) 
     plt.figure(figsize=(8, 8))
-    if len(df_active) > 10000:
-        data_plot = df_active.sample(10000)
+    # Campioniamo se sono troppi punti per alleggerire il PDF finale
+    if len(df_active) > 20000:
+        data_plot = df_active.sample(20000)
     else:
         data_plot = df_active
         
     plt.scatter(data_plot['beta_merit'], data_plot['mean_X'], alpha=0.3, s=10, c='teal')
     plt.xscale('log'); plt.yscale('log')
-    plt.xlabel(r"Qualità Intrinseca $\beta_{merit}$")
+    plt.xlabel(r"Qualità Intrinseca $\beta_{merit}$ (Solo Post Originali)")
     plt.ylabel(r"Popolarità Raggiunta $\langle X \rangle$")
     plt.title(f"Efficienza del Mercato (Meritocrazia)\nKendall Tau = {tau:.2f} (1.0 = Perfetta)")
     
@@ -122,7 +129,7 @@ def main():
         overlap_results.append((k, perc))
         print(f"   Top {k}: {perc:.1f}% di sovrapposizione")
 
-    # Grafico B: Overlap Curve
+    # Grafico B: Overlap Curve 
     if overlap_results:
         ks, percs = zip(*overlap_results)
         plt.figure(figsize=(8, 6))
@@ -137,7 +144,7 @@ def main():
         plt.close()
 
     # =========================================================================
-    # 3. GRAFICO HEXBIN DEI RANGHI (Visualizzazione Tau) - NUOVO INTEGRATO
+    # 3. GRAFICO HEXBIN DEI RANGHI (Visualizzazione Tau)
     # =========================================================================
     print("\n📈 3. Generazione Scatter Plot dei Ranghi (Hexbin)...")
     plt.figure(figsize=(9, 8))
@@ -172,10 +179,11 @@ def main():
     # 4. REPORT FINALE
     # =========================================================================
     report = f"""
-    === REPORT STEP 3: FAIRNESS E DOMINANZA ===
+    === REPORT STEP 3: FAIRNESS E DOMINANZA (DATASET CORRETTO) ===
     
     1. ANALISI CORRELAZIONE (EFFICIENZA DI MERCATO)
        Utenti analizzati: {len(df_active)}
+       (Filtrati: Solo utenti con > {MIN_POSTS} post originali)
        
        - Kendall Tau: {tau:.4f}
          * Se vicino a 1.0: Il sistema è meritocratico.
@@ -184,15 +192,16 @@ def main():
        - Pearson (Log-Log): {pearson_corr:.4f}
 
     2. ANALISI TOP-RANK (ELITE)
-       Quanto spesso i "Migliori" sono anche i "Più Famosi"?
+       Quanto spesso i "Migliori" (per qualità dei post originali)
+       sono anche i "Più Famosi"?
        
        - Top 100 Overlap: {overlap_results[1][1] if len(overlap_results)>1 else 'N/A'}%
        - Top 1000 Overlap: {overlap_results[2][1] if len(overlap_results)>2 else 'N/A'}%
        
-    3. VISUALIZZAZIONI GENERATE
-       - 3a_fairness_scatter_values.png: Scatter valori grezzi.
-       - 3b_topk_overlap.png: Curva di sovrapposizione Elite.
-       - 3c_fairness_rank_hexbin.png: Scatter dei Ranghi (Visualizzazione Tau).
+    3. INTERPRETAZIONE POST-MODIFICA
+       Aver rimosso i repost rende questo dato molto più solido.
+       Se Tau è basso, non è colpa dello spam, ma è proprio una caratteristica
+       strutturale della piattaforma: la fama non segue il merito creativo.
     """
     
     with open(OUTPUT_REPORT, "w") as f:

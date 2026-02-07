@@ -6,249 +6,219 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import sys
-from scipy.stats import linregress, probplot, lognorm
+from scipy.stats import linregress, lognorm
 from scipy.optimize import curve_fit
 
 # --- CONFIGURAZIONE ---
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Input dallo Step 1 (Eventi con X(t) pre-calcolato)
 INPUT_EVENTS = os.path.abspath(os.path.join(CURRENT_DIR, "../data/events_enriched.csv.gz"))
 
-# Output (Immagini e CSV Parametri)
 OUTPUT_DIR_IMGS = os.path.abspath(os.path.join(CURRENT_DIR, "../results/figures"))
 OUTPUT_PARAMS = os.path.abspath(os.path.join(CURRENT_DIR, "../data/user_parameters_estimated.csv"))
 OUTPUT_REPORT = os.path.abspath(os.path.join(CURRENT_DIR, "../results/report_step2.txt"))
 
-def main():
-    print("--- STEP 2: STIMA PARAMETRI (PAPER) ---")
+def fit_activity_curve(binned_data):
+    """
+    Funzione helper per fittare la curva di attività (Lambda vs X).
+    """
+    x_data = binned_data['prev_X']
     
-    # 0. CARICAMENTO DATI
+    # Gestione nome colonna (rate o posting_rate)
+    if 'posting_rate' in binned_data.columns:
+        y_data = binned_data['posting_rate']
+    else:
+        y_data = binned_data['rate']
+    
+    # 1. Tentativo Power Law: a + b * x^phi
+    try:
+        popt, _ = curve_fit(lambda x, a, b, c: a + b * x**c, 
+                            x_data, y_data,
+                            p0=[25, -10, -0.5], maxfev=10000)
+        lam0, lam1, phi = popt
+        
+        x_fit = np.logspace(np.log10(x_data.min()), np.log10(x_data.max()), 100)
+        y_fit = lam0 + lam1 * x_fit**phi
+        return phi, rf'Fit Power: $\lambda \approx {lam0:.1f} + {lam1:.2f}X^{{{phi:.2f}}}$', (lam0, lam1, phi), (x_fit, y_fit)
+    except:
+        pass
+
+    # 2. Tentativo Logaritmico
+    try:
+        popt, _ = curve_fit(lambda x, a, b: a + b * np.log(x), x_data, y_data)
+        lam0, lam1 = popt
+        phi = 0.0
+        
+        x_fit = np.logspace(np.log10(x_data.min()), np.log10(x_data.max()), 100)
+        y_fit = lam0 + lam1 * np.log(x_fit)
+        return phi, rf'Fit Log: $\lambda \sim \log(X)$', (lam0, lam1), (x_fit, y_fit)
+    except:
+        # 3. Fallback Costante
+        phi = 0.0
+        avg_val = y_data.mean()
+        x_fit = np.logspace(np.log10(x_data.min()), np.log10(x_data.max()), 100)
+        y_fit = [avg_val] * len(x_fit)
+        return phi, f"Media Costante: {avg_val:.2f}", (avg_val,), (x_fit, y_fit)
+
+def main():
+    print("--- STEP 2: STIMA PARAMETRI (DUAL PHI VERSION - FIXED 2) ---")
+    
+    # 0. CARICAMENTO
     if not os.path.exists(INPUT_EVENTS):
-        print(f"❌ Errore: Manca {INPUT_EVENTS}. Esegui prima lo Step 1.")
+        print(f"❌ Errore: Manca {INPUT_EVENTS}.")
         sys.exit(1)
 
     os.makedirs(OUTPUT_DIR_IMGS, exist_ok=True)
     os.makedirs(os.path.dirname(OUTPUT_PARAMS), exist_ok=True)
 
-    print("📥 Caricamento eventi (questo può richiedere tempo)...")
-    df = pd.read_csv(INPUT_EVENTS, compression='gzip')
-    print(f"   Righe totali: {len(df)}")
-
-    # Filtro base: Analizziamo solo eventi dove la popolarità pregressa è > 0.1
-    # (per evitare log(0) e rumore di fondo)
-    df_clean = df[(df['prev_X'] > 0.1) & (df['v_i'] > 0)].copy()
-
-    # =========================================================================
-    # ASSUMPTION 1: LA LEGGE DI POTENZA (Theta)
-    # Obiettivo: Capire se i "ricchi diventano più ricchi" (V ~ X^theta)
-    # =========================================================================
-    print("\n📊 1. ASSUMPTION 1: Stima Theta (Viralità)...")
-    
-    # Binning: Raggruppiamo i dati in 50 fasce di popolarità per pulire il grafico
-    df_clean['bin_X'] = pd.qcut(df_clean['prev_X'], q=50, duplicates='drop')
-    binned_success = df_clean.groupby('bin_X', observed=True).agg({
-        'prev_X': 'mean',
-        'v_i': 'mean'
-    }).reset_index()
-
-    # Regressione Log-Log
-    log_x = np.log(binned_success['prev_X'])
-    log_y = np.log(binned_success['v_i'])
-    slope, intercept, r_val, _, _ = linregress(log_x, log_y)
-    
-    GLOBAL_THETA = slope
-    print(f"   ✅ THETA stimato: {GLOBAL_THETA:.4f} (R2={r_val**2:.3f})")
-
-    # Grafico Assumption 1
-    plt.figure(figsize=(8,6))
-    plt.scatter(binned_success['prev_X'], binned_success['v_i'], alpha=0.6, label='Dati Empirici')
-    plt.plot(binned_success['prev_X'], np.exp(intercept) * binned_success['prev_X']**slope, 
-             'r--', label=rf'Fit: $V \sim X^{{{slope:.2f}}}$')
-    plt.xscale('log'); plt.yscale('log')
-    plt.title(f"Assumption 1: Successo Atteso vs Popolarità\n(Theta={GLOBAL_THETA:.2f})")
-    plt.xlabel("Popolarità Istantanea X(t)")
-    plt.ylabel("Successo del Post (Engagement)")
-    plt.legend()
-    plt.savefig(os.path.join(OUTPUT_DIR_IMGS, "2a_assumption1_theta.png"))
-    plt.close()
-
-# =========================================================================
-    # ASSUMPTION 2: LOGNORMALITÀ DEGLI SCARTI & BETA PULITO (CORRETTO)
-    # =========================================================================
-    print("\n📊 2. ASSUMPTION 2: Beta 'Meritocratico' e Lognormalità...")
-    
-    # Calcolo Beta
-    df_clean['beta_merit_i'] = df_clean['v_i'] / (df_clean['prev_X'] ** GLOBAL_THETA)
-    
-    # Rimuoviamo eventuali inf/nan o valori <= 0 (impossibili per lognorm)
-    data_beta = df_clean['beta_merit_i']
-    data_beta = data_beta[data_beta > 0].dropna()
-
-    # --- METODO ROBUSTO PER IL FIT ---
-    # 1. Passiamo allo spazio logaritmico
-    log_data = np.log(data_beta)
-    
-    # 2. Calcoliamo media (mu) e sigma sui logaritmi (Fit Normale)
-    # Questo è matematicamente equivalente a fittare una Lognormale ma molto più stabile
-    mu, sigma =  np.mean(log_data), np.std(log_data)
-    
-    # Parametri per scipy.stats.lognorm:
-    # s (shape) = sigma
-    # scale = exp(mu)
-    # loc = 0 (fissato a zero perché il merito non può essere negativo)
-    shape_fit = sigma
-    scale_fit = np.exp(mu)
-    
-    print(f"   ✅ Parametri Lognormal Fit: Mu={mu:.2f}, Sigma={sigma:.2f}")
-
-    # --- GRAFICO CORRETTO ---
-    plt.figure(figsize=(10,6))
-    
-    # Istogramma dei dati reali
-    # 'stat="density"' è fondamentale per confrontarlo con la curva teorica
-    sns.histplot(data_beta, log_scale=True, stat='density', 
-                 color='steelblue', alpha=0.6, label='Dati Empirici (Beta)', element="step", fill=True)
-    
-    # Generazione Curva Teorica (Linea Rossa)
-    # Creiamo un asse X logaritmico che copre tutto il range dei tuoi dati
-    x_min, x_max = data_beta.min(), data_beta.max()
-    x_pdf = np.logspace(np.log10(x_min), np.log10(x_max), 200)
-    
-    # Calcolo PDF teorica usando i parametri robusti
-    y_pdf = lognorm.pdf(x_pdf, s=shape_fit, scale=scale_fit, loc=0)
-    
-    plt.plot(x_pdf, y_pdf, 'r-', lw=2.5, label=f'Fit Lognormale\n($\mu={mu:.2f}, \sigma={sigma:.2f}$)')
-    
-    plt.title(f"Assumption 2: Distribuzione del Merito (Fit Lognormale)\nValore Medio Beta = {data_beta.mean():.2f}")
-    plt.xlabel(r"Beta Meritocratico ($V / X^\theta$) - Scala Log")
-    plt.ylabel("Densità di Probabilità")
-    plt.legend()
-    plt.grid(True, which="both", ls="--", alpha=0.3)
-    
-    output_path = os.path.join(OUTPUT_DIR_IMGS, "2b_assumption2_lognormal.png")
-    plt.savefig(output_path)
-    plt.close()
-    print(f"   💾 Grafico salvato in: {output_path}")
-    # =========================================================================
-    # ASSUMPTION 3: ATTIVITÀ DI POSTING (Lambda vs X)
-    # Obiettivo: Vedere se chi è famoso posta di più
-    # =========================================================================
-    print("\n📊 3. ASSUMPTION 3: Dinamica di Posting...")
-    
-    # Calcolo tempo inter-post per ogni utente
-    df = df.sort_values(['did', 'ts'])
-    df['prev_ts'] = df.groupby('did')['ts'].shift(1)
-    df['inter_post_time'] = df['ts'] - df['prev_ts']
-    
-    # Filtriamo dati validi
-    df_activity = df.dropna(subset=['inter_post_time']).copy()
-    df_activity = df_activity[df_activity['prev_X'] > 0.1]
-    
-    # Posting rate = 1 / (giorni passati dall'ultimo post)
-    df_activity['posting_rate'] = 86400.0 / df_activity['inter_post_time']
-    # Rimuoviamo casi estremi (spam o bug)
-    df_activity = df_activity[(df_activity['posting_rate'] > 0.01) & (df_activity['posting_rate'] < 50)]
-
-    # Binning su X per vedere il trend medio
-    df_activity['bin_X'] = pd.qcut(df_activity['prev_X'], q=40, duplicates='drop')
-    binned_activity = df_activity.groupby('bin_X', observed=True).agg({
-        'prev_X': 'mean',
-        'posting_rate': 'mean'
-    }).reset_index()
-
-    # Fit della curva Lambda = L0 + L1 * X^Phi
+    print("📥 Caricamento eventi...")
+    cols_needed = ['v_i', 'prev_X', 'post_type', 'ts', 'did']
     try:
-        popt, _ = curve_fit(lambda x, a, b, c: a + b * x**c, 
-                            binned_activity['prev_X'], binned_activity['posting_rate'],
-                            p0=[1, 0.1, 0.1], maxfev=5000)
-        lam0, lam1, phi = popt
-        fit_label = rf'Fit: $\lambda \approx {lam0:.1f} + {lam1:.2f}X^{{{phi:.2f}}}$'
+        df = pd.read_csv(INPUT_EVENTS, compression='gzip', usecols=lambda c: c in cols_needed)
     except:
-        lam0, lam1, phi = 0, 0, 0
-        fit_label = "Fit fallito (Relazione debole)"
-    
-    print(f"   ✅ Parametri Attività stimati: Lambda0={lam0:.2f}, Phi={phi:.3f}")
+        df = pd.read_csv(INPUT_EVENTS, compression='gzip')
 
-    # Grafico Assumption 3
-    plt.figure(figsize=(8,6))
-    plt.scatter(binned_activity['prev_X'], binned_activity['posting_rate'], alpha=0.7, label='Dati Empirici')
-    if lam0 != 0:
-        x_fit = np.logspace(np.log10(binned_activity['prev_X'].min()), np.log10(binned_activity['prev_X'].max()), 100)
-        plt.plot(x_fit, lam0 + lam1 * x_fit**phi, 'r--', label=fit_label)
+    if 'post_type' not in df.columns:
+        df['post_type'] = 'post'
+
+    # =========================================================================
+    # 1. THETA & BETA (SOLO POST ORIGINALI)
+    # =========================================================================
+    df_content = df[(df['post_type'] == 'post') & (df['prev_X'] > 0.1) & (df['v_i'] > 0)].copy()
+    print(f"📊 1. Analisi Viralità su {len(df_content)} post originali...")
+
+    # Binning Theta
+    try:
+        df_content['bin_X'] = pd.qcut(df_content['prev_X'], q=50, duplicates='drop')
+    except:
+        df_content['bin_X'] = pd.qcut(df_content['prev_X'], q=10, duplicates='drop')
+
+    binned_success = df_content.groupby('bin_X', observed=True).agg({'prev_X': 'mean', 'v_i': 'mean'}).dropna()
     
+    slope, intercept, r_val, _, _ = linregress(np.log(binned_success['prev_X']), np.log(binned_success['v_i']))
+    GLOBAL_THETA = slope
+    print(f"   ✅ THETA (Viralità): {GLOBAL_THETA:.4f}")
+
+    # Plot Theta
+    plt.figure(figsize=(6,4))
+    plt.scatter(binned_success['prev_X'], binned_success['v_i'], color='black', alpha=0.6)
+    plt.plot(binned_success['prev_X'], np.exp(intercept) * binned_success['prev_X']**slope, 'r--')
+    plt.xscale('log'); plt.yscale('log'); plt.title(f"Viralità (Theta={GLOBAL_THETA:.2f})"); 
+    plt.savefig(os.path.join(OUTPUT_DIR_IMGS, "2a_assumption1_theta.png")); plt.close()
+
+    # Beta Lognormale
+    df_content['beta'] = df_content['v_i'] / (df_content['prev_X'] ** GLOBAL_THETA)
+    betas = df_content['beta'].dropna()[df_content['beta'] > 0]
+    mu_fit, sigma_fit = np.mean(np.log(betas)), np.std(np.log(betas))
+    print(f"   ✅ BETA (Qualità): Mu={mu_fit:.2f}, Sigma={sigma_fit:.2f}")
+
+    # Plot Beta
+    plt.figure(figsize=(6,4))
+    x_th = np.logspace(np.log10(betas.min()), np.log10(betas.max()), 200)
+    sns.histplot(betas, stat='density', log_scale=True, element="step", fill=False, color='blue')
+    plt.plot(x_th, lognorm.pdf(x_th, s=sigma_fit, scale=np.exp(mu_fit)), 'r-', label='Lognormale')
+    plt.xscale('log'); plt.yscale('log'); plt.title(f"Qualità (Sigma={sigma_fit:.2f})"); plt.legend()
+    plt.savefig(os.path.join(OUTPUT_DIR_IMGS, "2b_assumption2_beta.png")); plt.close()
+
+    # =========================================================================
+    # 2. ATTIVITÀ: CALCOLO DOPPIO (TOTALE vs CREATIVA)
+    # =========================================================================
+    print("\n📊 2. Analisi Attività (Phi)...")
+    
+    # --- A. ATTIVITÀ TOTALE (Post + Repost) ---
+    df_full = df.sort_values(['did', 'ts'])
+    df_full['inter_time'] = df_full.groupby('did')['ts'].diff()
+    df_tot = df_full.dropna(subset=['inter_time'])
+    df_tot = df_tot[(df_tot['prev_X'] > 1) & (df_tot['inter_time'] > 60)] # Filtro spam < 1 min
+    
+    # QUI CHIAMIAMO LA COLONNA 'rate'
+    df_tot['rate'] = 86400.0 / df_tot['inter_time']
+    df_tot = df_tot[df_tot['rate'] < 500]
+
+    # Binning Totale
+    try:
+        df_tot['bin_X'] = pd.qcut(df_tot['prev_X'], q=40, duplicates='drop')
+    except:
+        df_tot['bin_X'] = pd.qcut(df_tot['prev_X'], q=10, duplicates='drop')
+        
+    bin_tot = df_tot.groupby('bin_X', observed=True).agg({'prev_X': 'mean', 'rate': 'mean'}).dropna()
+    
+    # Fit Totale
+    phi_tot, label_tot, _, (xf_tot, yf_tot) = fit_activity_curve(bin_tot)
+    print(f"   🔹 Phi TOTALE (Visibilità): {phi_tot:.4f}")
+
+    # --- B. ATTIVITÀ CREATIVA (Solo Post Originali) ---
+    df_orig = df[df['post_type'] == 'post'].sort_values(['did', 'ts']).copy()
+    df_orig['inter_time'] = df_orig.groupby('did')['ts'].diff()
+    df_orig = df_orig.dropna(subset=['inter_time'])
+    df_orig = df_orig[(df_orig['prev_X'] > 1) & (df_orig['inter_time'] > 60)]
+    
+    df_orig['rate'] = 86400.0 / df_orig['inter_time']
+    df_orig = df_orig[df_orig['rate'] < 500]
+
+    # Binning Creativo
+    try:
+        df_orig['bin_X'] = pd.qcut(df_orig['prev_X'], q=40, duplicates='drop')
+    except:
+        df_orig['bin_X'] = pd.qcut(df_orig['prev_X'], q=10, duplicates='drop')
+        
+    bin_orig = df_orig.groupby('bin_X', observed=True).agg({'prev_X': 'mean', 'rate': 'mean'}).dropna()
+
+    # Fit Creativo
+    phi_creat, label_creat, _, (xf_creat, yf_creat) = fit_activity_curve(bin_orig)
+    print(f"   🔸 Phi CREATIVO (Sforzo Umano): {phi_creat:.4f}")
+
+    # =========================================================================
+    # GRAFICO COMPARATIVO ATTIVITÀ
+    # =========================================================================
+    plt.figure(figsize=(10, 7))
+    plt.scatter(bin_tot['prev_X'], bin_tot['rate'], color='blue', alpha=0.3, label='Dati Totali (Post+Repost)')
+    plt.plot(xf_tot, yf_tot, 'b-', lw=2, label=f'Fit Totale: Phi={phi_tot:.2f}')
+    plt.scatter(bin_orig['prev_X'], bin_orig['rate'], color='green', marker='x', alpha=0.5, label='Dati Creativi (Solo Post)')
+    plt.plot(xf_creat, yf_creat, 'g--', lw=2, label=f'Fit Creativo: Phi={phi_creat:.2f}')
     plt.xscale('log'); plt.yscale('log')
-    plt.title("Assumption 3: Frequenza Posting vs Popolarità")
-    plt.xlabel("Popolarità Istantanea X")
-    plt.ylabel("Posting Rate (post/day)")
-    plt.legend()
-    plt.savefig(os.path.join(OUTPUT_DIR_IMGS, "2c_assumption3_activity.png"))
-    plt.close()
+    plt.title("Assumption 3: Attività Totale vs Sforzo Creativo")
+    plt.xlabel("Popolarità (X)"); plt.ylabel("Azioni al Giorno")
+    plt.legend(); plt.grid(True, which="both", ls="--", alpha=0.3)
+    out_path = os.path.join(OUTPUT_DIR_IMGS, "2c_assumption3_dual_activity.png")
+    plt.savefig(out_path); plt.close()
 
     # =========================================================================
-    # 4. SALVATAGGIO PARAMETRI FINALI
+    # SALVATAGGIO DATI UTENTE (FIXED: ORA INCLUDE n_posts_analyzed)
     # =========================================================================
-    print("\n💾 4. Salvataggio Parametri Utente...")
+    print("\n💾 Salvataggio dati utente (con conteggio post)...")
     
-    # Calcoliamo il Beta Medio per ogni utente
-    user_params = df_clean.groupby('did').agg({
-        'beta_merit_i': 'mean',  # Merito medio dell'utente
-        'v_i': 'count'           # Numero di post analizzati
-    }).rename(columns={'beta_merit_i': 'beta_merit', 'v_i': 'n_posts_analyzed'})
+    # 1. Qualità (Beta) + CONTEGGIO POST
+    user_q = df_content.groupby('did').agg({
+        'beta': 'mean',
+        'v_i': 'count' # <--- ECCO LA COLONNA MANCANTE AGGIUNTA
+    }).reset_index().rename(columns={'beta': 'beta_merit', 'v_i': 'n_posts_analyzed'})
     
-    user_params.reset_index().to_csv(OUTPUT_PARAMS, index=False)
+    # 2. Attività Totale
+    user_a = df_tot.groupby('did')['rate'].mean().reset_index(name='lambda_total')
     
-    # Scrittura Report Testuale
+    # 3. Attività Creativa
+    user_c = df_orig.groupby('did')['rate'].mean().reset_index(name='lambda_creative')
+    
+    # Merge
+    user_params = pd.merge(user_q, user_a, on='did', how='left')
+    user_params = pd.merge(user_params, user_c, on='did', how='left')
+    
+    user_params.to_csv(OUTPUT_PARAMS, index=False)
+
+    # REPORT
     report = f"""
-    === REPORT STEP 2: STIMA PARAMETRI (DETTAGLIATO) ===
-    
-    1. ASSUMPTION 1: LEGGE DI POTENZA (VIRALITÀ - Theta)
-       -----------------------------------------------------
-       > Valore Theta Globale: {GLOBAL_THETA:.4f}
-       > Metodo: Regressione Lineare su scala Log-Log (binning su 50 fasce).
-       > Significato: Rappresenta l'esponente della relazione E[V] ~ X^theta.
-       > Interpretazione Tesi:
-         - Se Theta < 1.0: Il sistema tende all'Equilibrio (Fair Play).
-           Il vantaggio di essere famosi cresce meno che proporzionalmente.
-         - Se Theta >= 1.0: Il sistema tende al Monopolio (Dominanza).
-           Effetto "Rich-get-Richer" esplosivo.
-
-    2. ASSUMPTION 2: QUALITÀ INTRINSECA (MERITO - Beta)
-       -----------------------------------------------------
-       > Verifica Distribuzione: Vedi grafico 'step2_2_lognormal_check.png'.
-         (Se la curva rossa fitta l'istogramma, il rumore è moltiplicativo/Lognormale).
-       > Merito Medio (Beta Pulito): {user_params['beta_merit'].mean():.4f}
-       > Metodo: Calcolato per ogni post con la formula inversa:
-         Beta_i = V_reale / (Popolarità_pregressa ^ Theta)
-       > Significato:
-         È la capacità "pura" dell'utente di generare like,
-         depurata dal vantaggio di avere già follower/visibilità.
-
-    3. ASSUMPTION 3: DINAMICA DI POSTING (ATTIVITÀ - Lambda)
-       -----------------------------------------------------
-       > Modello fittato: Lambda(X) = {lam0:.2f} + {lam1:.2f} * X^{phi:.2f}
-       > Parametro Chiave Phi (Reattività): {phi:.4f}
-       > Interpretazione Tesi:
-         - Se Phi ~ 0: L'attività è costante (Processo di Poisson omogeneo).
-           La popolarità non influenza quanto spesso un utente posta.
-         - Se Phi > 0: Processo "Self-Exciting".
-           Diventare popolari incentiva l'utente a postare molto di più.
-    
-    4. DATASET FINALE
-       -----------------------------------------------------
-       Parametri individuali salvati in:
-       {OUTPUT_PARAMS}
-       
-       Contiene per ogni utente ({len(user_params)} totali):
-       - beta_merit: La qualità media stimata dell'utente.
-       - n_posts_analyzed: Su quanti post è basata la stima.
+    === REPORT STEP 2: STIMA PARAMETRI (DUAL PHI) ===
+    1. THETA (VIRALITÀ): {GLOBAL_THETA:.4f}
+    2. BETA (MERITO): Mu={mu_fit:.4f}, Sigma={sigma_fit:.4f}
+    3. LAMBDA (ATTIVITÀ):
+       - Visibilità Totale (Post + Repost): Phi = {phi_tot:.4f}
+       - Sforzo Creativo (Solo Post): Phi = {phi_creat:.4f}
     """
-    
     with open(OUTPUT_REPORT, "w") as f:
         f.write(report)
-        
+    
     print(report)
     print("✅ STEP 2 COMPLETATO.")
-    
 
 if __name__ == "__main__":
     main()

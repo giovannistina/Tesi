@@ -152,7 +152,7 @@ def main():
        - Finestra analizzata: {WINDOW_DAYS} giorni
        - Utenti analizzati: {len(stats)}
        
-       RISULTATI:
+       RISULTATI (considerando post + repost):
        - D Medio: {mean_D:.4f}
        - D Mediano: {median_D:.4f}
        - % Utenti Bursty (D > 1.5): {bursty_pct:.2f}%

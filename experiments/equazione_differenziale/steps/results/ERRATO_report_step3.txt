@@ -1,0 +1,25 @@
+
+    === REPORT STEP 3: FAIRNESS E DOMINANZA (DATASET CORRETTO) ===
+    
+    1. ANALISI CORRELAZIONE (EFFICIENZA DI MERCATO)
+       Utenti analizzati: 27019
+       (Filtrati: Solo utenti con > 5 post originali)
+       
+       - Kendall Tau: -0.1939
+         * Se vicino a 1.0: Il sistema è meritocratico.
+         * Se vicino a 0.0: Il successo è scollegato dalla qualità.
+       
+       - Pearson (Log-Log): -0.0604
+
+    2. ANALISI TOP-RANK (ELITE)
+       Quanto spesso i "Migliori" (per qualità dei post originali)
+       sono anche i "Più Famosi"?
+       
+       - Top 100 Overlap: 6.0%
+       - Top 1000 Overlap: 16.1%
+       
+    3. INTERPRETAZIONE POST-MODIFICA
+       Aver rimosso i repost rende questo dato molto più solido.
+       Se Tau è basso, non è colpa dello spam, ma è proprio una caratteristica
+       strutturale della piattaforma: la fama non segue il merito creativo.
+    

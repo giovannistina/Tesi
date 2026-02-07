@@ -1,0 +1,20 @@
+=== REPORT PARAMETRI (DATI COMPLETI CON OUTLIERS) ===
+
+GRUPPO: INFLUENCER
+  Punti analizzati:     29271
+  > MU (Target):        1328.59
+  > THETA (Rigidità):   0.0766
+  > SIGMA (Volatilità): 1175.83
+  > CV (Rischio Rel.):  88.50%
+  > Half-Life:          9.04 giorni
+  > R^2:                0.0371
+----------------------------------------
+GRUPPO: WANNABE
+  Punti analizzati:     51244
+  > MU (Target):        69.38
+  > THETA (Rigidità):   0.1220
+  > SIGMA (Volatilità): 155.04
+  > CV (Rischio Rel.):  223.46%
+  > Half-Life:          5.68 giorni
+  > R^2:                0.0590
+----------------------------------------

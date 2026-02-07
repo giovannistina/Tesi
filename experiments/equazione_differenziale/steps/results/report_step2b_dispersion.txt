@@ -1,0 +1,22 @@
+
+    === REPORT BURSTINESS (STEP 2b) ===
+    
+    1. ANALISI TEMPORALE (Inter-event Times)
+       - Grafico generato: 2b_burstiness_intertimes.png
+       - Risultato: La curva empirica (Viola) devia significativamente dalla Poissoniana (Nera),
+         seguendo una legge di potenza ('Heavy Tail'). Ciò indica che le pause brevi sono
+         estremamente frequenti (raffiche), così come le pause lunghissime.
+
+    2. ANALISI STATISTICA (Indice di Dispersione D)
+       - Finestra analizzata: 7 giorni
+       - Utenti analizzati: 29037
+       
+       RISULTATI (considerando post + repost):
+       - D Medio: 12.7017
+       - D Mediano: 5.1473
+       - % Utenti Bursty (D > 1.5): 89.55%
+       
+       INTERPRETAZIONE:
+       Il valore D medio >> 1 conferma matematicamente ciò che il grafico mostra visivamente:
+       il processo di posting su Bluesky è altamente irregolare e 'Self-Exciting'.
+    

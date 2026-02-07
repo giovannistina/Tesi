@@ -1,0 +1,8 @@
+
+    === REPORT STEP 2: STIMA PARAMETRI (DUAL PHI) ===
+    1. THETA (VIRALITÀ): 0.3254
+    2. BETA (MERITO): Mu=-0.3941, Sigma=0.9555
+    3. LAMBDA (ATTIVITÀ):
+       - Visibilità Totale (Post + Repost): Phi = -0.1875
+       - Sforzo Creativo (Solo Post): Phi = -0.1418
+    

@@ -1,0 +1,19 @@
+
+    === REPORT ANALISI (REPOST FILTRATI) ===
+    
+    1. DATI
+       Utenti Totali: 29453
+       
+    2. DISUGUAGLIANZA (Gini)
+       - Popolarità (X): 0.7886
+       - Qualità (Beta): 0.6153
+       - Attività (Lambda): 0.6919
+       
+    3. PARAMETRI STIMATI (Solo su Post Originali)
+       - Theta (Viralità): 0.3254
+       - R^2 del Fit: 0.6009
+       
+    4. CORRELAZIONI
+       - Lambda vs X: 0.7991
+       - Beta vs X: 0.4309
+    

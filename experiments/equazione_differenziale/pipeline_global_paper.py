@@ -18,16 +18,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Cartella corrente (/equa
 # Lista ordinata degli script da eseguire con il loro percorso relativo
 SCRIPTS = [
     # --- STEP 1: Analisi Descrittiva e Popolarità ---
-    "steps/1a_preprocessing.py",        # Estrae dati grezzi -> CSV
+    "steps/1a_preprocessing.py",        # Estrae dati grezzi -> CSV (Gestisce Post/Repost)
     "steps/1b_compute_Xt.py",           # Calcola popolarità X(t) e arricchisce eventi
     "steps/1c_analysis.py",             # Genera grafici descrittivi e Gini
     
     # --- STEP 2: Stima Parametri e Validazione Modello ---
     "steps/2a_parameter_estimation.py", # Stima Theta, Beta, Lambda (Assumption 1, 2, 3)
     "steps/2b_dispersion_analysis.py",  # Validazione Burstiness/Dispersione (Assumption 3b)
+    #"steps/2c_best_fit_finder.py",      # Torneo Distribuzioni: Lognormale vs Pareto (Assumption 2b)
 
-    # --- STEP 3: Analisi Fairness e Dominanza ---
-    "steps/3a_fairness_analysis.py"     # Calcola Kendall Tau e Top-K Overlap
+    # --- STEP 3: Analisi Fairness e Dominanza ERRATO---
+    # "steps/3a_fairness_analysis.py"     # Calcola Kendall Tau e Top-K Overlap
 ]
 
 def print_log(message):
@@ -74,7 +75,7 @@ def run_step(script_relative_path):
 
 def main():
     print("=" * 60)
-    print("       PIPELINE GLOBALE: (STEP 1, 2 & 3)       ")
+    print("        PIPELINE GLOBALE: (STEP 1, 2 & 3)        ")
     print("=" * 60)
     print_log(f"Directory base: {BASE_DIR}")
     print_log(f"Pausa tra script: {WAIT_TIME_SECONDS} secondi")
