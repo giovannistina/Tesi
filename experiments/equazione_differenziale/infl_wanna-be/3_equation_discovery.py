@@ -122,17 +122,6 @@ def main():
         report.append(f"  Sigma Base (Coefficiente):    {res['sigma_base']:.3f}")
         report.append(f"  R^2 (Log-Log Fit):            {res['R2']:.3f}")
         
-        # Interpretazione Fisica
-        if res['gamma'] < 0.2:
-            model_type = "Rumore Costante (Simile a OU)"
-        elif 0.4 <= res['gamma'] <= 0.6:
-            model_type = "Rumore Radice Quadrata (Simile a CIR)"
-        elif 0.8 <= res['gamma'] <= 1.2:
-            model_type = "Rumore Moltiplicativo (Simile a Geometrico)"
-        else:
-            model_type = "Modello Ibrido / Complesso"
-            
-        report.append(f"  -> MODELLO SUGGERITO: {model_type}")
         
         # Scrittura Equazione in LaTeX
         eq = f"dX_t = {p['theta']:.2f}({p['mu']:.0f} - X_t)dt + {res['sigma_base']:.2f} X_t^{{{res['gamma']:.2f}}} dW_t"
